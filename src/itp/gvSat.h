@@ -70,6 +70,8 @@ class GVSatSolver
                        bool fb);
         void addCNF(Var& va, bool fa, Var& vb, bool fb);
         void addCNF(const GVNetId&, bool fa, Var& vb, bool fb);
+        void addCNF(const vector<Var>& vs, vector<bool>& bs);
+        void addCNF(const vector<GVNetId>& vs, vector<bool>& bs);
     private:
         const Var newVar();
         const Var getVerifyData(const GVNetId&, const uint32_t&) const;

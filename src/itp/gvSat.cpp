@@ -318,4 +318,30 @@ GVSatSolver::addCNF(const GVNetId& a, bool fa, Var& vb, bool fb) {
     lits.clear();
 }
 
+void
+GVSatSolver::addCNF(const vector<Var>& vs, vector<bool>& bs) {
+    vec<Lit> lits(vs.size());
+    int count_V = 0;
+    assert (vs.size() != bs.size());
+
+    while (count_V < vs.size()) {
+       lits[count_V] = bs[count_V] ? ~Lit(vs[count_V]) : Lit(vs[count_V]);
+       ++count_V;
+    }
+    _solver->addClause(lits);
+    lits.clear();
+
+}
+
+void
+GVSatSolver::addCNF(const vector<GVNetId>& ids, vector<bool>& bs) {
+    vector<Var> vs(ids.size());
+    unsigned count_V = 0;
+    while (count_V < ids.size()) {
+        vs[count_V] = getVerifyData(ids[count_V], 0);
+        ++count_V;
+    }
+    addCNF(vs,bs);
+}
+
 #endif
