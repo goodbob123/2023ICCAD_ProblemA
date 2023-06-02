@@ -322,7 +322,7 @@ void
 GVSatSolver::addCNF(const vector<Var>& vs, vector<bool>& bs) {
     vec<Lit> lits(vs.size());
     int count_V = 0;
-    assert (vs.size() != bs.size());
+    assert (vs.size() == bs.size());
 
     while (count_V < vs.size()) {
        lits[count_V] = bs[count_V] ? ~Lit(vs[count_V]) : Lit(vs[count_V]);
@@ -337,11 +337,20 @@ void
 GVSatSolver::addCNF(const vector<GVNetId>& ids, vector<bool>& bs) {
     vector<Var> vs(ids.size());
     unsigned count_V = 0;
+    assert (vs.size() == bs.size());
     while (count_V < ids.size()) {
         vs[count_V] = getVerifyData(ids[count_V], 0);
         ++count_V;
     }
     addCNF(vs,bs);
 }
-
+const int
+GVSatSolver::getVarValue(const size_t& var) const {
+    // if (_solver->model.empty()) {
+    //     cerr << "UNSAT, no var value" << endl;
+    //     return -1;
+    // }
+    return (_solver->model[var]==l_True?1:
+                (_solver->model[var]==l_False?0:-1));
+}
 #endif
