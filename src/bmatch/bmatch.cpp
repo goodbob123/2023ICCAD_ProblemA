@@ -124,15 +124,15 @@ SATMgr::booleanMatching() {
     vector<vector<GVNetId>> i_Matching(nPI1 * 2,vector<GVNetId>(nPI2));
     for (int v2 = 0; v2 < nPI2; ++v2) {
         for (int v1 = 0; v1 < nPI1; ++v1) {
-            i_Matching[v1 * 2][v2] = miterSolver->getMiter(gvNtkMgr->getInput(v1), gvNtkMgr->getInput(v2));
-            i_Matching[v1 * 2 + 1][v2] = miterSolver->getMiter(~gvNtkMgr->getInput(v1), gvNtkMgr->getInput(v2));
+            i_Matching[v1 * 2][v2] = miterSolver->getMiter(gvNtkMgr->getInput(v1), gvNtkMgr->getInput(nPI1 + v2));
+            i_Matching[v1 * 2 + 1][v2] = miterSolver->getMiter(~gvNtkMgr->getInput(v1), gvNtkMgr->getInput(nPI1 + v2));
         }
     }
     vector<vector<GVNetId>> o_Matching(nPO1 * 2,vector<GVNetId>(nPO2));
     for (int v2 = 0; v2 < nPO2; ++v2) {
         for (int v1 = 0; v1 < nPO1; ++v1) {
-            o_Matching[v1 * 2][v2] = miterSolver->getMiter(gvNtkMgr->getOutput(v1), gvNtkMgr->getOutput(v2));
-            o_Matching[v1 * 2 + 1][v2] = miterSolver->getMiter(~gvNtkMgr->getOutput(v1), gvNtkMgr->getOutput(v2));
+            o_Matching[v1 * 2][v2] = miterSolver->getMiter(gvNtkMgr->getOutput(v1), gvNtkMgr->getOutput(nPO1 + v2));
+            o_Matching[v1 * 2 + 1][v2] = miterSolver->getMiter(~gvNtkMgr->getOutput(v1), gvNtkMgr->getOutput(nPO1 + v2));
         }
     }
     cout << "now ntk num: " << gvNtkMgr->getNetSize() << endl;
@@ -153,6 +153,7 @@ SATMgr::booleanMatching() {
     // if SAT -> keep going
         // if (matrixSolver->assump_solve()) {
         if (matrixSolver->solve()) {
+            cout << "matrixSolver SAT" << endl;
             cout << "input" << endl;
             for (int col = 0; col < nPI2; ++col) {
                 for (int row = 0; row < nPI1 * 2 + 2; ++row) {
@@ -212,6 +213,7 @@ SATMgr::booleanMatching() {
             cout << "No remaining matching" << endl;
             break;
         }
+
         if (miterSolver->assump_solve()) { 
             // miterSolver SAT -> exclude this wrong mapping from mappingSolver
             cout << "miterSlover SAT" << endl;
@@ -239,6 +241,7 @@ SATMgr::booleanMatching() {
                     }
                     cout << endl;
                 }
+                score = newScore; //modify
             }
 
             // block the found mapping
