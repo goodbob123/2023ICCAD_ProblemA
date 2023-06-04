@@ -18,6 +18,27 @@ using namespace std;
 
 // #define isGVNetInverted(netId) (netId.cp)
 
+// calculate score based on the mapping results
+static int getScore(GVSatSolver* matrixSolver, const vector<vector<Var>>& outputMatrix) {
+    // TODO: How about undefined output ?? Is it possible that there is undefined variable in the output matrix ?
+    int score = 0;
+    for (int row = 0; row < outputMatrix.size() / 2; ++row) {
+        bool foundOne = false;
+        for (int col = 0; col < outputMatrix[row].size(); ++col) {
+            if (matrixSolver->getVarValue(outputMatrix[2 * row][col]) == 1) {
+                score ++;
+                foundOne = true;
+            }
+            if (matrixSolver->getVarValue(outputMatrix[2 * row + 1][col]) == 1) {
+                score ++;
+                foundOne = true;
+            }
+        }
+        if (foundOne) score += 1;
+    }
+    return score;
+}
+
 void
 SATMgr::booleanMatching() {
     cout << "enter booleanMatching!" << endl;
@@ -117,17 +138,21 @@ SATMgr::booleanMatching() {
     cout << "now ntk num: " << gvNtkMgr->getNetSize() << endl;
     cout << "builded mitter, current clause: " << miterSolver->getNumClauses()
          << endl;
-    unsigned mustOut = 0;
+    // unsigned mustOut = 0;
+    vector<vector<bool>> inputAns(nPI1 * 2 + 2,vector<bool>(nPI2));
+    vector<vector<bool>> outputAns(nPO1 * 2,vector<bool>(nPO2));
+    int score = 0;
+    bool foundOneAns = false; // must find at least one solution
     while (1) {
-        #ifdef DEBUG
-        ++mustOut;
-        if (mustOut > 1000) break;
-        #endif
+        // #ifdef DEBUG
+        // ++mustOut;
+        // if (mustOut > 1000) break;
+        // #endif
     // solve mapping matrix
     // if UNSAT -> return no match
     // if SAT -> keep going
-        if (matrixSolver->assump_solve()) {
-
+        // if (matrixSolver->assump_solve()) {
+        if (matrixSolver->solve()) {
             cout << "input" << endl;
             for (int col = 0; col < nPI2; ++col) {
                 for (int row = 0; row < nPI1 * 2 + 2; ++row) {
@@ -142,41 +167,119 @@ SATMgr::booleanMatching() {
                 }
                 cout << endl;
             }
-
+            
+            miterSolver->assumeRelease();
             for (int v2 = 0; v2 < nPI2; ++v2) {
                 for (int v1 = 0; v1 < nPI1; ++v1) {
-                    if (matrixSolver->getVarValue(inputMatrix[v1 * 2][v2]) == 1)
-                        miterSolver->assumeProperty(i_Matching[v1 * 2][v2], false, 0);
-                    if (matrixSolver->getVarValue(inputMatrix[v1 * 2 + 1][v2]) == 1)
-                        miterSolver->assumeProperty(i_Matching[v1 * 2 + 1][v2], false, 0);
+                    // if (matrixSolver->getVarValue(inputMatrix[v1 * 2][v2]) == 1)
+                    //     miterSolver->assumeProperty(i_Matching[v1 * 2][v2], false, 0);
+                    // if (matrixSolver->getVarValue(inputMatrix[v1 * 2 + 1][v2]) == 1)
+                    //     miterSolver->assumeProperty(i_Matching[v1 * 2 + 1][v2], false, 0);
+                    int value = matrixSolver->getVarValue(inputMatrix[v1 * 2][v2]);
+                    if (value != 0) // 0 for l_bool undefined
+                        miterSolver->assumeProperty(i_Matching[v1 * 2][v2], !bool(value + 1), 0);
+                    value = matrixSolver->getVarValue(inputMatrix[v1 * 2 + 1][v2]);
+                    if (value != 0) // 0 for l_bool undefined
+                        miterSolver->assumeProperty(i_Matching[v1 * 2 + 1][v2], !bool(value + 1), 0);
                 }
-                if (matrixSolver->getVarValue(inputMatrix[nPI1 * 2][v2]) == 1)
-                    miterSolver->assumeProperty(gvNtkMgr->getInput(v2), false, 0);
-                if (matrixSolver->getVarValue(inputMatrix[nPI1 * 2 + 1][v2]) == 1)
-                    miterSolver->assumeProperty(~gvNtkMgr->getInput(v2), false, 0);
+                // if (matrixSolver->getVarValue(inputMatrix[nPI1 * 2][v2]) == 1)
+                //     miterSolver->assumeProperty(gvNtkMgr->getInput(v2), false, 0);
+                // if (matrixSolver->getVarValue(inputMatrix[nPI1 * 2 + 1][v2]) == 1)
+                //     miterSolver->assumeProperty(~gvNtkMgr->getInput(v2), false, 0);
+                int value = matrixSolver->getVarValue(inputMatrix[nPI1 * 2][v2]);
+                if (value != 0) // 0 for l_bool undefined
+                    miterSolver->assumeProperty(gvNtkMgr->getInput(v2), !bool(value + 1), 0);
+                value = matrixSolver->getVarValue(inputMatrix[nPI1 * 2 + 1][v2]);
+                if (value != 0) // 0 for l_bool undefined
+                    miterSolver->assumeProperty(~gvNtkMgr->getInput(v2), !bool(value + 1), 0);   
             }
             for (int v2 = 0; v2 < nPO2; ++v2) {
                 for (int v1 = 0; v1 < nPO1; ++v1) {
-                    if (matrixSolver->getVarValue(outputMatrix[v1 * 2][v2]) == 1)
-                        miterSolver->assumeProperty(o_Matching[v1 * 2][v2], false, 0);
-                    if (matrixSolver->getVarValue(outputMatrix[v1 * 2 + 1][v2]) == 1)
-                        miterSolver->assumeProperty(o_Matching[v1 * 2 + 1][v2], false, 0);
+                    // if (matrixSolver->getVarValue(outputMatrix[v1 * 2][v2]) == 1)
+                    //     miterSolver->assumeProperty(o_Matching[v1 * 2][v2], false, 0);
+                    // if (matrixSolver->getVarValue(outputMatrix[v1 * 2 + 1][v2]) == 1)
+                    //     miterSolver->assumeProperty(o_Matching[v1 * 2 + 1][v2], false, 0);
+                    int value = matrixSolver->getVarValue(outputMatrix[v1 * 2][v2]);
+                    if (value != 0)
+                        miterSolver->assumeProperty(o_Matching[v1 * 2][v2], !bool(value + 1), 0);
+                    value = matrixSolver->getVarValue(outputMatrix[v1 * 2 + 1][v2]);
+                    if (value != 0)
+                        miterSolver->assumeProperty(o_Matching[v1 * 2 + 1][v2], !bool(value + 1), 0);
                 }
             }
         } else {
-            //...
+            // matrixSlover UNSAT -> no remaining matching
+            cout << "No remaining matching" << endl;
+            break;
         }
-    // (matching SAT)
-    // build miter (建亨)
-        if (miterSolver->assump_solve()) {
-            // cout << "solve" << endl;
+        if (miterSolver->assump_solve()) { 
+            // miterSolver SAT -> exclude this wrong mapping from mappingSolver
+            cout << "miterSlover SAT" << endl;
+            
         } 
-        // else {
-        //     cout << "unsolve" << endl;
-        // }
-        break;
-    // (miter UNSAT)
-    // record score & exclude current matching (wish)
+        else {
+            // miterSolver UNSAT -> find a matching mapping
+            cout << "miterSlover UNSAT -> find a matching mapping" << endl;
+            int newScore = getScore(matrixSolver, outputMatrix);
+            if (newScore > score) {
+                cout << "Update mapping with score: " << newScore << ", mapping as follows:" << endl;
+                cout << "input" << endl;
+                for (int col = 0; col < nPI2; ++col) {
+                    for (int row = 0; row < nPI1 * 2 + 2; ++row) {
+                        inputAns[row][col] = matrixSolver->getVarValue(inputMatrix[row][col]);
+                        cout << inputAns[row][col] << " ";
+                    }
+                    cout << endl;
+                }
+                cout << "output" << endl;
+                for (int col = 0; col < nPO2; ++col) {
+                    for (int row = 0; row < nPO1 * 2; ++row) {
+                        outputAns[row][col] = matrixSolver->getVarValue(outputMatrix[row][col]);
+                        cout << outputAns[row][col] << " ";
+                    }
+                    cout << endl;
+                }
+            }
 
+            // block the found mapping
+            int nofMatrixVar = nPI2 * (nPI1 * 2 + 2) + nPO2 * (nPO1 * 2);
+            vector<Var> vs(nofMatrixVar);
+            vector<bool> bs(nofMatrixVar); // bs[index] is true -> ~vs[index] in clause
+            int index = 0;
+            for (int col = 0; col < nPI2; ++col) {
+                for (int row = 0; row < nPI1 * 2 + 2; ++row) {
+                    vs[index] = inputMatrix[row][col];
+                    bs[index] = (matrixSolver->getVarValue(inputMatrix[row][col]) == 1);
+                    index ++;
+                }
+            }
+            for (int col = 0; col < nPO2; ++col) {
+                for (int row = 0; row < nPO1 * 2; ++row) {
+                    vs[index] = outputMatrix[row][col];
+                    bs[index] = (matrixSolver->getVarValue(outputMatrix[row][col]) == 1);
+                    index ++;
+                }
+            }
+            matrixSolver->addCNF(vs, bs);
+        }
+    }
+    assert(foundOneAns);
+    // output optimal solution
+    cout << "Optimal score: " << score << ", mapping as follows:" << endl;
+    cout << "input" << endl;
+    for (int col = 0; col < nPI2; ++col) {
+        for (int row = 0; row < nPI1 * 2 + 2; ++row) {
+            inputAns[row][col] = matrixSolver->getVarValue(inputMatrix[row][col]);
+            cout << inputAns[row][col] << " ";
+        }
+        cout << endl;
+    }
+    cout << "output" << endl;
+    for (int col = 0; col < nPO2; ++col) {
+        for (int row = 0; row < nPO1 * 2; ++row) {
+            outputAns[row][col] = matrixSolver->getVarValue(outputMatrix[row][col]);
+            cout << outputAns[row][col] << " ";
+        }
+        cout << endl;
     }
 }
