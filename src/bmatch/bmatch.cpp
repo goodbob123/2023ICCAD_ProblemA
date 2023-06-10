@@ -154,7 +154,11 @@ SATMgr::booleanMatching() {
     // if UNSAT -> return no match
     // if SAT -> keep going
         // if (matrixSolver->assump_solve()) {
+        GVNetId S;
+        bool is_S;
         if (matrixSolver->solve()) {
+            assert(!(matrixSolver->getVarValue(inputMatrix[0][0]) == 1 && matrixSolver->getVarValue(inputMatrix[0][1]) == 1));
+            assert(!(matrixSolver->getVarValue(inputMatrix[1][0]) == 1 && matrixSolver->getVarValue(inputMatrix[0][0]) == 1));
             // cout << "matrixSolver SAT" << endl;
             // cout << "input" << endl;
             // for (int col = 0; col < nPI2; ++col) {
@@ -184,8 +188,8 @@ SATMgr::booleanMatching() {
                     miterSolver->assumeProperty(~gvNtkMgr->getInput(v2), false, 0);
             }
             // output should not be different
-            GVNetId S;
-            bool is_S = false;
+            // GVNetId S;
+            is_S = false;
             for (int v2 = 0; v2 < nPO2; ++v2) {
                 for (int v1 = 0; v1 < nPO1 * 2; ++v1) {
                     if (matrixSolver->getVarValue(outputMatrix[v1][v2]) == 1) {
@@ -195,7 +199,7 @@ SATMgr::booleanMatching() {
                     }
                 }
             }
-            if (is_S) miterSolver->assertProperty(S, false, 0);
+            if (is_S) miterSolver->assumeProperty(S, false, 0);
         } else {
             // matrixSlover UNSAT -> no remaining matching
             cout << "No remaining matching" << endl;
@@ -204,8 +208,52 @@ SATMgr::booleanMatching() {
 
         if (miterSolver->assump_solve()) { 
             // miterSolver SAT -> exclude this wrong mapping from mappingSolver
-            cout << "miterSlover SAT" << endl;
-            
+            // cout << "miterSlover SAT" << endl;
+            if (is_S) {
+                // cout << "matrixSolver" << endl;
+                // cout << "input" << endl;
+                // for (int col = 0; col < nPI2; ++col) {
+                //     for (int row = 0; row < nPI1 * 2; ++row) {
+                //         if (matrixSolver->getVarValue(inputMatrix[row][col]) == 1) {
+                //             cout << "input "<< row << " " << col << " is same ? ";
+                //             cout << miterSolver->getDataValue(i_Matching[row][col], 0) << endl;
+                //         }
+                //     }
+                // }
+                if (matrixSolver->getVarValue(inputMatrix[0][0]) == 1 && matrixSolver->getVarValue(inputMatrix[2][1]) == 1) {
+                    if (matrixSolver->getVarValue(outputMatrix[0][0]) == 1 && matrixSolver->getVarValue(outputMatrix[2][1]) == 1) {
+                        cout << "output" << endl;
+                        for (int i = 0; i < gvNtkMgr->getOutputSize(); ++i) {
+                            cout << i << ":" << miterSolver->getDataValue(gvNtkMgr->getOutput(i), 0) << endl;
+                        }
+                        cout << "input" << endl;
+                        for (int i = 0; i < gvNtkMgr->getInputSize(); ++i) {
+                            cout << i << ":" << miterSolver->getDataValue(gvNtkMgr->getInput(i), 0) << endl;
+                        }
+                        for (int col = 0; col < nPI2; ++col) {
+                            for (int row = 0; row < nPI1 * 2; ++row) {
+                                if (matrixSolver->getVarValue(inputMatrix[row][col]) == 1) {
+                                    cout << "input "<< row << " " << col << " is same ? ";
+                                    cout << miterSolver->getDataValue(i_Matching[row][col], 0) << endl;
+                                }
+                            }
+                        }
+                        for (int col = 0; col < nPO2; ++col) {
+                            for (int row = 0; row < nPO1 * 2; ++row) {
+                                // cout << matrixSolver->getVarValue(outputMatrix[row][col]) << " ";
+                                if (matrixSolver->getVarValue(outputMatrix[row][col]) == 1) {
+                                    cout << "output "<< row << " " << col << " is not same ? ";
+                                    cout << miterSolver->getDataValue(o_Matching[row][col], 0) << endl;
+                                }
+                            }
+                            // cout << endl;
+                        }
+                        cout << "is there output not match : " << miterSolver->getDataValue(S, 0) << endl;
+                    }
+                }
+                // cout << miterSolver->getDataValue(S, 0) << endl;
+            }
+            // cout << miterSolver->getDataValue(S, 0) << endl;
         } 
         else {
             // miterSolver UNSAT -> find a matching mapping
