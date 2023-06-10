@@ -349,17 +349,5 @@ GVSatSolver::getVarValue(const Var& var) const {
     return (_solver->model[var]==l_True?1:
                 (_solver->model[var]==l_False?0:-1));
 }
-GVNetId
-GVSatSolver::getMiter(const GVNetId& a, const GVNetId& b) {
-    unsigned num_ntk = gvNtkMgr->getNetSize();
-    GVNetId buf_xnor1 = gvNtkMgr->createNet();
-    gvNtkMgr->createGVAndGate(buf_xnor1, ~a, ~b);
-    GVNetId buf_xnor2 = gvNtkMgr->createNet();
-    gvNtkMgr->createGVAndGate(buf_xnor2, a, b);
-    GVNetId eq = ~gvNtkMgr->createNet();
-    gvNtkMgr->createGVAndGate(eq, ~buf_xnor1, ~buf_xnor2);
-    resizeNtkData(gvNtkMgr->getNetSize() - num_ntk);
-    addBoundedVerifyData(eq, 0);
-    return eq;
-}
+
 #endif

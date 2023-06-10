@@ -38,7 +38,37 @@ static int getScore(GVSatSolver* matrixSolver, const vector<vector<Var>>& output
     }
     return score;
 }
-
+void boundInput(GVSatSolver* s,const GVNetId& a, const GVNetId& b, GVNetId& en) {
+    unsigned num_ntk = gvNtkMgr->getNetSize();
+    GVNetId buf_xnor1 = gvNtkMgr->createNet();
+    gvNtkMgr->createGVAndGate(buf_xnor1, ~a, ~b);
+    GVNetId buf_xnor2 = gvNtkMgr->createNet();
+    gvNtkMgr->createGVAndGate(buf_xnor2, a, b);
+    GVNetId xnor = ~gvNtkMgr->createNet();
+    gvNtkMgr->createGVAndGate(xnor, ~buf_xnor1, ~buf_xnor2);
+    s->resizeNtkData(gvNtkMgr->getNetSize() - num_ntk);
+    s->addBoundedVerifyData(xnor, 0);
+    en = xnor;
+}
+void getMiter(GVSatSolver* s, const GVNetId& a, const GVNetId& b, GVNetId& en, GVNetId& out) {
+    unsigned num_ntk = gvNtkMgr->getNetSize();
+    GVNetId buf_xor1 = gvNtkMgr->createNet();
+    gvNtkMgr->createGVAndGate(buf_xor1, ~a, b);
+    GVNetId buf_xor2 = gvNtkMgr->createNet();
+    gvNtkMgr->createGVAndGate(buf_xor2, a, ~b);
+    GVNetId _xor = ~gvNtkMgr->createNet();
+    gvNtkMgr->createGVAndGate(_xor, ~buf_xor1, ~buf_xor2);
+    cout << "p2" << endl;
+    GVNetId buf_and1 = gvNtkMgr->createNet();
+    GVNetId _and = gvNtkMgr->createNet();
+    gvNtkMgr->createGVAndGate(_and, buf_and1, _xor);
+    s->resizeNtkData(gvNtkMgr->getNetSize() - num_ntk);
+    cout << "p3" << endl;
+    s->addBoundedVerifyData(_and, 0);
+    cout << "p4" << endl;
+    en = buf_and1;
+    out = _and;
+}
 void
 SATMgr::booleanMatching() {
     cout << "enter booleanMatching!" << endl;
@@ -124,17 +154,39 @@ SATMgr::booleanMatching() {
     vector<vector<GVNetId>> i_Matching(nPI1 * 2,vector<GVNetId>(nPI2));
     for (int v2 = 0; v2 < nPI2; ++v2) {
         for (int v1 = 0; v1 < nPI1; ++v1) {
-            i_Matching[v1 * 2][v2] = miterSolver->getMiter(gvNtkMgr->getInput(v1), gvNtkMgr->getInput(nPI1 + v2));
-            i_Matching[v1 * 2 + 1][v2] = miterSolver->getMiter(~gvNtkMgr->getInput(v1), gvNtkMgr->getInput(nPI1 + v2));
+            boundInput(miterSolver, gvNtkMgr->getInput(v1), gvNtkMgr->getInput(nPI1 + v2), i_Matching[v1 * 2][v2]);
+            boundInput(miterSolver, ~gvNtkMgr->getInput(v1), gvNtkMgr->getInput(nPI1 + v2), i_Matching[v1 * 2 + 1][v2]);
         }
     }
+    cout << "builded i_matching, current clause: " << miterSolver->getNumClauses()
+         << endl;
     vector<vector<GVNetId>> o_Matching(nPO1 * 2,vector<GVNetId>(nPO2));
+    GVNetId P;
     for (int v2 = 0; v2 < nPO2; ++v2) {
         for (int v1 = 0; v1 < nPO1; ++v1) {
-            o_Matching[v1 * 2][v2] = miterSolver->getMiter(gvNtkMgr->getOutput(v1), gvNtkMgr->getOutput(nPO1 + v2));
-            o_Matching[v1 * 2 + 1][v2] = miterSolver->getMiter(~gvNtkMgr->getOutput(v1), gvNtkMgr->getOutput(nPO1 + v2));
+            cout << v1 << " " <<v2 << endl;
+            GVNetId out1, out2;
+            getMiter(miterSolver, gvNtkMgr->getOutput(v1), gvNtkMgr->getOutput(nPO1 + v2), o_Matching[v1 * 2][v2], out1);
+            getMiter(miterSolver, ~gvNtkMgr->getOutput(v1), gvNtkMgr->getOutput(nPO1 + v2), o_Matching[v1 * 2 + 1][v2], out2);
+            cout << "p1" << endl;
+            if (v1 == 0 && v2 == 0) {
+                unsigned num_ntk = gvNtkMgr->getNetSize();
+                P = gvNtkMgr->createNet();
+                gvNtkMgr->createGVAndGate(P, ~out1, ~out2);
+                miterSolver->resizeNtkData(gvNtkMgr->getNetSize() - num_ntk);
+            } else {
+                unsigned num_ntk = gvNtkMgr->getNetSize();
+                GVNetId buf1 = gvNtkMgr->createNet();
+                gvNtkMgr->createGVAndGate(buf1, P, ~out1);
+                GVNetId buf2 = gvNtkMgr->createNet();
+                gvNtkMgr->createGVAndGate(buf2, buf1, ~out2);
+                P = buf2;
+                miterSolver->resizeNtkData(gvNtkMgr->getNetSize() - num_ntk);
+            }
         }
     }
+    miterSolver->addBoundedVerifyData(P, 0);
+    miterSolver->assertProperty(~P,false,0);
     cout << "now ntk num: " << gvNtkMgr->getNetSize() << endl;
     cout << "builded mitter, current clause: " << miterSolver->getNumClauses()
          << endl;
@@ -172,40 +224,22 @@ SATMgr::booleanMatching() {
             miterSolver->assumeRelease();
             for (int v2 = 0; v2 < nPI2; ++v2) {
                 for (int v1 = 0; v1 < nPI1; ++v1) {
-                    // if (matrixSolver->getVarValue(inputMatrix[v1 * 2][v2]) == 1)
-                    //     miterSolver->assumeProperty(i_Matching[v1 * 2][v2], false, 0);
-                    // if (matrixSolver->getVarValue(inputMatrix[v1 * 2 + 1][v2]) == 1)
-                    //     miterSolver->assumeProperty(i_Matching[v1 * 2 + 1][v2], false, 0);
-                    int value = matrixSolver->getVarValue(inputMatrix[v1 * 2][v2]);
-                    if (value != 0) // 0 for l_bool undefined
-                        miterSolver->assumeProperty(i_Matching[v1 * 2][v2], !bool(value + 1), 0);
-                    value = matrixSolver->getVarValue(inputMatrix[v1 * 2 + 1][v2]);
-                    if (value != 0) // 0 for l_bool undefined
-                        miterSolver->assumeProperty(i_Matching[v1 * 2 + 1][v2], !bool(value + 1), 0);
+                    if (matrixSolver->getVarValue(inputMatrix[v1 * 2][v2]) == 1)
+                        miterSolver->assumeProperty(i_Matching[v1 * 2][v2], false, 0);
+                    if (matrixSolver->getVarValue(inputMatrix[v1 * 2 + 1][v2]) == 1)
+                        miterSolver->assumeProperty(i_Matching[v1 * 2 + 1][v2], false, 0);
                 }
-                // if (matrixSolver->getVarValue(inputMatrix[nPI1 * 2][v2]) == 1)
-                //     miterSolver->assumeProperty(gvNtkMgr->getInput(v2), false, 0);
-                // if (matrixSolver->getVarValue(inputMatrix[nPI1 * 2 + 1][v2]) == 1)
-                //     miterSolver->assumeProperty(~gvNtkMgr->getInput(v2), false, 0);
-                int value = matrixSolver->getVarValue(inputMatrix[nPI1 * 2][v2]);
-                if (value != 0) // 0 for l_bool undefined
-                    miterSolver->assumeProperty(gvNtkMgr->getInput(v2), !bool(value + 1), 0);
-                value = matrixSolver->getVarValue(inputMatrix[nPI1 * 2 + 1][v2]);
-                if (value != 0) // 0 for l_bool undefined
-                    miterSolver->assumeProperty(~gvNtkMgr->getInput(v2), !bool(value + 1), 0);   
+                if (matrixSolver->getVarValue(inputMatrix[nPI1 * 2][v2]) == 1)
+                    miterSolver->assumeProperty(gvNtkMgr->getInput(v2), false, 0);
+                if (matrixSolver->getVarValue(inputMatrix[nPI1 * 2 + 1][v2]) == 1)
+                    miterSolver->assumeProperty(~gvNtkMgr->getInput(v2), false, 0);   
             }
             for (int v2 = 0; v2 < nPO2; ++v2) {
                 for (int v1 = 0; v1 < nPO1; ++v1) {
-                    // if (matrixSolver->getVarValue(outputMatrix[v1 * 2][v2]) == 1)
-                    //     miterSolver->assumeProperty(o_Matching[v1 * 2][v2], false, 0);
-                    // if (matrixSolver->getVarValue(outputMatrix[v1 * 2 + 1][v2]) == 1)
-                    //     miterSolver->assumeProperty(o_Matching[v1 * 2 + 1][v2], false, 0);
-                    int value = matrixSolver->getVarValue(outputMatrix[v1 * 2][v2]);
-                    if (value != 0)
-                        miterSolver->assumeProperty(o_Matching[v1 * 2][v2], !bool(value + 1), 0);
-                    value = matrixSolver->getVarValue(outputMatrix[v1 * 2 + 1][v2]);
-                    if (value != 0)
-                        miterSolver->assumeProperty(o_Matching[v1 * 2 + 1][v2], !bool(value + 1), 0);
+                    if (matrixSolver->getVarValue(outputMatrix[v1 * 2][v2]) == 1)
+                        miterSolver->assumeProperty(o_Matching[v1 * 2][v2], false, 0);
+                    if (matrixSolver->getVarValue(outputMatrix[v1 * 2 + 1][v2]) == 1)
+                        miterSolver->assumeProperty(o_Matching[v1 * 2 + 1][v2], false, 0);
                 }
             }
         } else {
