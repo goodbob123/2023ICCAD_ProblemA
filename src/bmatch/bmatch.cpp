@@ -116,6 +116,24 @@ SATMgr::booleanMatching() {
     for (int i = 0; i < gvNtkMgr->getOutputSize(); ++i) {
         miterSolver->addBoundedVerifyData(gvNtkMgr->getOutput(i), 0);
     }
+
+    miterSolver->assumeProperty(gvNtkMgr->getInput(0), false, 0);
+    miterSolver->assumeProperty(gvNtkMgr->getInput(1), false, 0);
+    miterSolver->assumeProperty(gvNtkMgr->getInput(2), false, 0);
+    miterSolver->assumeProperty(gvNtkMgr->getInput(3), false, 0);
+    miterSolver->assumeProperty(gvNtkMgr->getOutput(0), false, 0);
+
+    if (miterSolver->assump_solve()) {
+        cout << "output" << endl;
+            for (int i = 0; i < gvNtkMgr->getOutputSize(); ++i) {
+                cout << i << ":" << miterSolver->getDataValue(gvNtkMgr->getOutput(i), 0) << endl;
+        }
+        cout << "input" << endl;
+            for (int i = 0; i < gvNtkMgr->getInputSize(); ++i) {
+                cout << i << ":" << miterSolver->getDataValue(gvNtkMgr->getInput(i), 0) << endl;
+        } 
+    }
+    assert(0);
     unsigned num_ntk = gvNtkMgr->getNetSize();
     cout << "init ntk num: " << num_ntk << endl;
     cout << "builded ckt, current clause: " << miterSolver->getNumClauses()
@@ -157,8 +175,8 @@ SATMgr::booleanMatching() {
         GVNetId S;
         bool is_S;
         if (matrixSolver->solve()) {
-            assert(!(matrixSolver->getVarValue(inputMatrix[0][0]) == 1 && matrixSolver->getVarValue(inputMatrix[0][1]) == 1));
-            assert(!(matrixSolver->getVarValue(inputMatrix[1][0]) == 1 && matrixSolver->getVarValue(inputMatrix[0][0]) == 1));
+            // assert(!(matrixSolver->getVarValue(inputMatrix[0][0]) == 1 && matrixSolver->getVarValue(inputMatrix[0][1]) == 1));
+            // assert(!(matrixSolver->getVarValue(inputMatrix[1][0]) == 1 && matrixSolver->getVarValue(inputMatrix[0][0]) == 1));
             // cout << "matrixSolver SAT" << endl;
             // cout << "input" << endl;
             // for (int col = 0; col < nPI2; ++col) {
@@ -221,7 +239,8 @@ SATMgr::booleanMatching() {
                 //     }
                 // }
                 if (matrixSolver->getVarValue(inputMatrix[0][0]) == 1 && matrixSolver->getVarValue(inputMatrix[2][1]) == 1) {
-                    if (matrixSolver->getVarValue(outputMatrix[0][0]) == 1 && matrixSolver->getVarValue(outputMatrix[2][1]) == 1) {
+                    if (true) {
+                    // if (matrixSolver->getVarValue(outputMatrix[0][0]) == 1 && matrixSolver->getVarValue(outputMatrix[2][1]) == 1) {
                         cout << "output" << endl;
                         for (int i = 0; i < gvNtkMgr->getOutputSize(); ++i) {
                             cout << i << ":" << miterSolver->getDataValue(gvNtkMgr->getOutput(i), 0) << endl;
