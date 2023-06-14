@@ -46,4 +46,4 @@ rm -rf "$dir"2.aag
 
 #execution
 ./SAT/test/satTest "$dir"name "$dir"circuit_1.aag "$dir"circuit_2.aag "$match"
-rm -rf "$dir"*.aig "$dir"*.aag "$dir"name "$dir"gv.dofile "$dir"match
+rm -rf "$dir"*.aig "$dir"*.aag "$dir"name "$dir"gv.dofile
