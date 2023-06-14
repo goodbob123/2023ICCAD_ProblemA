@@ -120,6 +120,10 @@ readAAG(ifstream& in, bool circuitOne) {
 }
 void
 outputAns(ostream& out) {
+    if (bestScore == 0) {
+        cout << "No matching found!" << endl;
+        return;
+    }
     cout << "----------Optimal Matching----------" << endl;
     cout << "Best Score: " << bestScore << endl << endl;
     cout << "Input matrix: " << endl;
@@ -371,7 +375,7 @@ buildMatrix() {
             oneHot.push_back(Lit(a[i][j].matrixVar));
             oneHot.push_back(Lit(b[i][j].matrixVar));
         }
-        matrixSolver.add_one_hot_constraint(oneHot);
+        matrixSolver.addOneHot(oneHot);
     }
     /*
     for (int i = 0; i < y.size(); ++i) {
@@ -591,7 +595,7 @@ void solve() {
   while (1) {
     iterations++;
     int execTime = (clock() - START) / CLOCKS_PER_SEC;
-    if (execTime - prevTime > 10) {
+    if (execTime - prevTime >= 10) {
       if(execTime >= 3600){
         cout<<"time limit reach\n";
         cout<<bestScore<<endl;
@@ -688,6 +692,17 @@ void solve() {
             cout << "Find a valid mapping!" << endl;
             int score = getScore();
             if (score > bestScore) {
+
+                vector<Lit> clause;
+                for (int j = 0; j < f.size(); ++j) {
+                   for (int i = 0; i < fStar.size(); ++i) {
+                      clause.push_back(Lit(c[i][j].matrixVar));
+                      clause.push_back(Lit(d[i][j].matrixVar));
+                   }
+                   clause.push_back(Lit(ansHelper[j]));
+                }
+                matrixSolver.addGte(clause, score + 1);
+
                 cout << "Better mapping!" << endl;
                 bestScore = score;
                 cout << "Input matrix:" << endl;
