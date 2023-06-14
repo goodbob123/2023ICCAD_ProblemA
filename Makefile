@@ -1,5 +1,5 @@
-SRCPKGS  = util cmd mod abc bdd itp ntk sim vrf ext prove 
-LIBPKGS  = util cmd mod abc bdd itp ntk sim vrf prove
+SRCPKGS  = util cmd mod abc bdd itp ntk sim vrf ext prove bmatch
+LIBPKGS  = util cmd mod abc bdd itp ntk sim vrf prove bmatch
 
 MAIN     = main
 
@@ -17,10 +17,10 @@ ENGPKGS	 += yosys
 
 ENGSSRC	 = eng
 
-EXEC     = gv
+EXEC     = ./bin/gv
 .PHONY : all debug
 
-all : EXEC     = gv
+all : EXEC     = ./bin/gv
 debug : EXEC     = gv.debug
 
 all:  DEBUG_FLAG =
@@ -29,7 +29,7 @@ debug:DEBUG_FLAG = -DGV_DEBUG
 LIB	     = libgv.a
 
 
-all debug:	srcLib
+all debug:	srcLib ./bin/parser ./bin/aig_map ./bin/satTest
 	@echo "Checking $(MAIN)..."
 	@cd src/$(MAIN); make --no-print-directory EXTLIB="$(SRCLIBS) $(EXTLIBS)" EXEC=$(EXEC); cd ../.. ;
 
@@ -68,6 +68,10 @@ clean:
 	@cd src/$(MAIN); make --no-print-directory clean
 	@echo "Removing $(EXEC)..."
 	@rm -f $(EXEC) 
+	@rm -f ./bin/parser
+	@rm -f ./bin/aig_map
+	@rm -f ./bin/satTest
+	@rm -f ./SAT/test/*.o satTest tags
 
 ctags:	
 	@rm -f src/tags
@@ -94,3 +98,26 @@ linux18 linux16 mac:
 	        cd lib; ln -sf lib$$pkg-$@.a lib$$pkg.a; cd ../..; \
 	done
 	@cd ref; ln -sf $(EXEC)-$@ $(EXEC);
+
+./bin/parser: ./parser/parser.cpp
+	g++ ./parser/parser.cpp -o2 -o ./bin/parser
+
+./bin/aig_map: ./parser/aig_map.cpp
+	g++ ./parser/aig_map.cpp -o2 -o ./bin/aig_map
+
+./bin/satTest: ./SAT/test/File.o ./SAT/test/Proof.o ./SAT/test/Solver.o ./SAT/test/satTest.o
+	g++ -o $@ -std=c++20 -g ./SAT/test/File.o ./SAT/test/Proof.o ./SAT/test/Solver.o ./SAT/test/satTest.o -o ./bin/satTest
+	rm -rf *.o
+
+./SAT/test/File.o: ./SAT/test/File.cpp
+	g++ -c -std=c++20 -g ./SAT/test/File.cpp -o ./SAT/test/File.o
+
+./SAT/test/Proof.o: ./SAT/test/Proof.cpp
+	g++ -c -std=c++20 -g ./SAT/test/Proof.cpp -o ./SAT/test/Proof.o
+
+./SAT/test/Solve.o: ./SAT/test/Solver.cpp
+	g++ -c -std=c++20 -g ./SAT/test/Solver.cpp -o ./SAT/test/Solver.o
+
+./SAT/test/satTest.o: ./SAT/test/satTest.cpp
+	g++ -c -std=c++20 -g ./SAT/test/satTest.cpp -o ./SAT/test/satTest.o
+	
