@@ -2,11 +2,13 @@
 #include <fstream>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include "sat.h"
 
 using namespace std;
 
-unordered_map<int, Var> hashmap;
+unordered_map<int, Var> AAG2VarHashmap;
+unordered_map<int, Var> outputInverted;
 
 class Port {
 public:
@@ -50,10 +52,12 @@ int bestScore;
 vector<vector<bool>> ans_a, ans_b, ans_c, ans_d;
 vector<Var> ansHelper;
 
-Var cnf2Var(int CNFVar) {
-   if (hashmap.find(CNFVar) == hashmap.end())
-      hashmap[CNFVar] = miterSolver.newVar();
-   return hashmap[CNFVar];
+Var AAG2Var(int AAGVar, bool circuitOne) {
+   if (!circuitOne)
+      AAGVar = -AAGVar;
+   if (AAG2VarHashmap.find(AAGVar) == AAG2VarHashmap.end())
+      AAG2VarHashmap[AAGVar] = miterSolver.newVar();
+   return AAG2VarHashmap[AAGVar];
 }
 
 void readPortMapping(ifstream& in) {
@@ -61,26 +65,45 @@ void readPortMapping(ifstream& in) {
    int one_two;
    string IO;
    string name;
-   int varInCNF;
-   while (in >> one_two >> IO >> name >> varInCNF) {
+   int litInAAG;
+   while (in >> one_two >> IO >> name >> litInAAG) {
       vector<Port>& IOPorts = (one_two == 1 ? (IO == "input" ? x : f) : (IO == "input" ? y : g));
-      IOPorts.push_back(Port(name, cnf2Var(varInCNF)));
-   }
-}
-void readCNF(ifstream& in) {
-   int litInCNF;
-   vector<Lit> lits;
-   while (in >> litInCNF) {
-      if (litInCNF == 0) {
-         miterSolver.addCNF(lits);
-         lits.clear();
-         continue;
+      Var v = AAG2Var(litInAAG / 2, (one_two == 1));
+      if (litInAAG % 2 == 1) { // inverted output
+         Var invVar = miterSolver.newVar(); // invVar = ~v
+         vector<Lit> lits; lits.push_back(Lit(invVar)); lits.push_back(Lit(v)); miterSolver.addCNF(lits);
+            lits.clear();  lits.push_back(~Lit(invVar)); lits.push_back(~Lit(v)); miterSolver.addCNF(lits);
+         v = invVar;
+         // output port will be the inverted var, and use AAG2VAR will get the original one
       }
-      bool sign = litInCNF < 0;
-      int varInCNF = abs(litInCNF);
-      Var var = cnf2Var(varInCNF);
-      lits.push_back(sign ? ~Lit(var) : Lit(var));
+      IOPorts.push_back(Port(name, v));
    }
+   in.close();
+}
+void readAAG(ifstream& in, bool circuitOne) {
+   int litInAAG;
+   string aag;
+   int M, I, L, O, A;
+   in >> aag >> M >> I >> L >> O >> A;
+   for (int i = 0; i < I; ++i) {
+      int temp;
+      in >> temp;
+   }
+   for (int i = 0; i < O; ++i) {
+      int outLit;
+      in >> outLit;
+   }
+   int lf, la, lb;
+   for (int i = 0; i < A; ++i) {
+      in >> lf >> la >> lb;
+      Var vf = AAG2Var(lf / 2, circuitOne);
+      Var va = AAG2Var(la / 2, circuitOne);
+      bool fa = la % 2;
+      Var vb = AAG2Var(lb / 2, circuitOne);
+      bool fb = lb % 2;
+      miterSolver.addAigCNF(vf, va, fa, vb, fb);
+   }
+   in.close();
 }
 void outputAns(ostream& out) {
    cout << "----------Optimal Matching----------" << endl;
@@ -236,7 +259,7 @@ void test2() {
    miterSolver.addAigCNF(g[2].getVar(), y[0].getVar(), false, b2, true);
    miterSolver.addAigCNF(g[3].getVar(), y[2].getVar(), false, y[3].getVar(), true);
 }
-void genCircuitModel(ifstream& portMapping, ifstream& cnf) {
+void genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aig2) {
    x.clear();
    f.clear();
    y.clear();
@@ -245,15 +268,15 @@ void genCircuitModel(ifstream& portMapping, ifstream& cnf) {
    // TODO: build circuit 1/2 constrains to miter, and add IO port name, Var to x/y, f/g
    
    // test1();
-   test2();
+   // test2();
    
-   // readPortMapping(portMapping);
-   // readCNF(cnf);
+   readPortMapping(portMapping);
+   readAAG(aag1, true);
+   readAAG(aig2, false);
+
    for (int i = 0; i < g.size(); ++i) {
       fStar.push_back(miterSolver.newVar());
-   }
-
-   
+   }   
 }
 void buildMatrix() {
    // TODO: add matrix constraints based on x, f, y, g
@@ -521,7 +544,11 @@ void genMiterConstraint() {
 
 void solve() {
    bestScore = 0;
+   int iterations = 0;
    while (1) {
+      iterations++;
+      if (iterations % 100 == 0)
+         cout << "Iteration " << iterations << endl;
       if (bestScore == g.size() + f.size()) {
          cout << "This must be the OPT with (#output_port(Circuit I) + #output_port(Circuit II)) = " << bestScore << endl;
          return;
@@ -653,23 +680,28 @@ void solve() {
 }
 
 int main(int argc, char **argv) {
-   if (argc != 4) {
-      cerr << "Usage: ./satTest <PortMapping> <CNF> <OutputFile>" << endl;
+   if (argc != 5) {
+      cerr << "Usage: ./satTest <PortMapping> <AAG1> <AAG2> <OutputFile>" << endl;
       return 0;
    }
    ifstream portMapping(argv[1]);
-   ifstream cnf(argv[2]);
-   ofstream out(argv[3]);
-   // if (!portMapping) {
-   //    cerr << "Error: Cannot open PortMapping " << argv[1] << endl;
-   //    return 0;
-   // }
-   // if (!cnf) {
-   //    cerr << "Error: Cannot open CNF " << argv[2] << endl;
-   //    return 0;
-   // }
+   ifstream aag1(argv[2]);
+   ifstream aag2(argv[3]);
+   ofstream out(argv[4]);
+   if (!portMapping) {
+      cerr << "Error: Cannot open PortMapping " << argv[1] << endl;
+      return 0;
+   }
+   if (!aag1) {
+      cerr << "Error: Cannot open AAG " << argv[2] << endl;
+      return 0;
+   }
+   if (!aag2) {
+      cerr << "Error: Cannot open AAG " << argv[3] << endl;
+      return 0;
+   }
    if (!out) {
-      cerr << "Error: Cannot open OutputFile " << argv[3] << endl;
+      cerr << "Error: Cannot open OutputFile " << argv[4] << endl;
       return 0;
    }
 
@@ -678,9 +710,10 @@ int main(int argc, char **argv) {
    miterSolver.initialize();
    miterSolver.assumeRelease();
 
-   genCircuitModel(portMapping, cnf);
+   genCircuitModel(portMapping, aag1, aag2);
    buildMatrix();
    genMiterConstraint();
+   cout << "Start solving..." << endl;
    solve();
    
    // output ans
