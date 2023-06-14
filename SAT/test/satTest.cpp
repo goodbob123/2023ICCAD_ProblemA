@@ -331,7 +331,7 @@ void buildMatrix() {
    // sum >= 1
    vector<Lit> ls; ls.reserve(2 * y.size());
    for (int j = 0; j < x.size(); ++j) { // exclude the zero/one column
-      ls.clear(); // bug
+      ls.clear();
       for (int i = 0; i < y.size(); ++i) {
          ls.push_back(Lit(a[i][j].matrixVar));
          ls.push_back(Lit(b[i][j].matrixVar));
@@ -408,6 +408,7 @@ void buildMatrix() {
 
    // update score helper Var
    ansHelper.reserve(f.size());
+   vector<Lit> aggressiveLits;
    for (int j = 0; j < f.size(); ++j) {
       ansHelper.push_back(matrixSolver.newVar());
       // v <-> (all c in column) + (all d in column)
@@ -427,7 +428,9 @@ void buildMatrix() {
          matrixSolver.addCNF(lits2);
       }
       matrixSolver.addCNF(lits);
+      aggressiveLits.push_back(Lit(ansHelper[j]));
    }
+   matrixSolver.addCNF(aggressiveLits);
 }
 
 void genMiterConstraint() {
@@ -595,10 +598,12 @@ void solve() {
          for (int i = 0; i < y.size(); ++i) {
             for (int j = 0; j < x.size(); ++j) {
                int value = matrixSolver.getValue(a[i][j].matrixVar);
+               assert(value != -1);
                if (value != -1) {
                   lits.push_back(value ? ~Lit(a[i][j].matrixVar) : Lit(a[i][j].matrixVar));
                }
                value = matrixSolver.getValue(b[i][j].matrixVar);
+               assert(value != -1);
                if (value != -1) {
                   lits.push_back(value ? ~Lit(b[i][j].matrixVar) : Lit(b[i][j].matrixVar));
                }
@@ -607,6 +612,7 @@ void solve() {
          for (int i = 0; i < fStar.size(); ++i) {
             for (int j = 0; j < f.size(); ++j) {
                int value = matrixSolver.getValue(c[i][j].matrixVar);
+               assert(value != -1);
                if (value != -1) {
                   lits.push_back(value ? ~Lit(c[i][j].matrixVar) : Lit(c[i][j].matrixVar));
                }
@@ -614,12 +620,12 @@ void solve() {
                if (value != -1) {
                   lits.push_back(value ? ~Lit(d[i][j].matrixVar) : Lit(d[i][j].matrixVar));
                }
+               assert(value != -1);
             }
          }
          matrixSolver.addCNF(lits);
 
-         //
-         // cerr << "Find a valid mapping!" << endl;
+         // cout << "Find a valid mapping!" << endl;
          int score = getScore();
          if (score > bestScore) {
             cout << "Better mapping!" << endl;
