@@ -25,10 +25,12 @@ after build up gv environment then make
 ./tests/sh/run_all.sh : run all test file in CAD_testdata and output result to corresponding directory
 
 #### Run specific test file
-
 ./tests/sh/bmatch "input" "match" : run "input" file and output result to "match"
 
-exemple : ./tests/sh/bmatch CAD_testdata/case01/input CAD_testdata/case01/match
+exemple : ./bmatch CAD_testdata/case01/input CAD_testdata/case01/match
+
+#### Clean all produced file
+make clean
 
 # GV
 
