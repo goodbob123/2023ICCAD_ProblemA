@@ -582,6 +582,10 @@ void solve() {
     iterations++;
     int execTime = (clock() - START) / CLOCKS_PER_SEC;
     if (execTime - prevTime > 10) {
+      if(execTime >= 3600){
+        cout<<"time limit reach\n";
+        return ;
+      }
       cout << "Iteration " << iterations << ", time: " << execTime << " seconds"
            << endl;
       prevTime = execTime;

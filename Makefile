@@ -100,24 +100,24 @@ linux18 linux16 mac:
 	@cd ref; ln -sf $(EXEC)-$@ $(EXEC);
 
 ./bin/parser: ./parser/parser.cpp
-	g++ ./parser/parser.cpp -o2 -o ./bin/parser
+	g++ ./parser/parser.cpp -O3 -o ./bin/parser
 
 ./bin/aig_map: ./parser/aig_map.cpp
-	g++ ./parser/aig_map.cpp -o2 -o ./bin/aig_map
+	g++ ./parser/aig_map.cpp -O3 -o ./bin/aig_map
 
 ./bin/satTest: ./SAT/test/File.o ./SAT/test/Proof.o ./SAT/test/Solver.o ./SAT/test/satTest.o
-	g++ -o $@ -std=c++20 -g ./SAT/test/File.o ./SAT/test/Proof.o ./SAT/test/Solver.o ./SAT/test/satTest.o -o ./bin/satTest
+	g++ -O3 -std=c++20 -g ./SAT/test/File.o ./SAT/test/Proof.o ./SAT/test/Solver.o ./SAT/test/satTest.o -o ./bin/satTest
 	rm -rf *.o
 
 ./SAT/test/File.o: ./SAT/test/File.cpp
-	g++ -c -std=c++20 -g ./SAT/test/File.cpp -o ./SAT/test/File.o
+	g++ -c -O3 -std=c++20 -g ./SAT/test/File.cpp -o ./SAT/test/File.o
 
 ./SAT/test/Proof.o: ./SAT/test/Proof.cpp
-	g++ -c -std=c++20 -g ./SAT/test/Proof.cpp -o ./SAT/test/Proof.o
+	g++ -c -O3 -std=c++20 -g ./SAT/test/Proof.cpp -o ./SAT/test/Proof.o
 
 ./SAT/test/Solve.o: ./SAT/test/Solver.cpp
-	g++ -c -std=c++20 -g ./SAT/test/Solver.cpp -o ./SAT/test/Solver.o
+	g++ -c -O3 -std=c++20 -g ./SAT/test/Solver.cpp -o ./SAT/test/Solver.o
 
 ./SAT/test/satTest.o: ./SAT/test/satTest.cpp
-	g++ -c -std=c++20 -g ./SAT/test/satTest.cpp -o ./SAT/test/satTest.o
+	g++ -c -O3 -std=c++20 -g ./SAT/test/satTest.cpp -o ./SAT/test/satTest.o
 	
