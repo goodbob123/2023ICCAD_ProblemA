@@ -17,7 +17,12 @@ if problem size is **not too large** $\rightarrow$ find **all possible matching*
 ## Usage
 
 ### Compile
-after build up gv environment then make
+#### Build up gv: 
+sudo ./SETUP.sh 
+./INSTALL.sh
+
+#### After build up gv environment then make:
+make
 
 ### Execution
 
