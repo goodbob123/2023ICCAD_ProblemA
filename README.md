@@ -17,17 +17,23 @@ if problem size is **not too large** $\rightarrow$ find **all possible matching*
 ## Usage
 
 ### Compile
-after build up gv environment then make
+#### Build up gv: 
+sudo ./SETUP.sh 
+
+./INSTALL.sh
+
+#### After build up gv environment then make:
+make
 
 ### Execution
 
-#### Run all test file
-./tests/sh/run_all.sh : run all test file in CAD_testdata and output result to corresponding directory
-
 #### Run specific test file
-./tests/sh/bmatch "input" "match" : run "input" file and output result to "match"
+./bmatch "input" "match" : run "input" file and output result to "match"
 
 exemple : ./bmatch CAD_testdata/case01/input CAD_testdata/case01/match
+
+#### Run all test file
+./tests/sh/run_all.sh : run all test file in CAD_testdata and output result to corresponding directory
 
 #### Clean all produced file
 make clean
