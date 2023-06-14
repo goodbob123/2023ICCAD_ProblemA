@@ -584,23 +584,23 @@ genMiterConstraint() {
     miterSolver.addCNF(lits);
 }
 
-void
-solve() {
-    bestScore      = 0;
-    int iterations = 0;
-    int prevTime   = 0;
-    while (1) {
-        iterations++;
-        int execTime = (clock() - START) / CLOCKS_PER_SEC;
-        if (execTime - prevTime > 10) {
-            cout << "Iteration " << iterations << ", time: " << execTime
-                 << " seconds" << endl;
-            prevTime = execTime;
-        }
-        if (execTime >= 3600) {
-            cout << "3600 seconds: " << bestScore << endl;
-            return;
-        }
+void solve() {
+  bestScore = 0;
+  int iterations = 0;
+  int prevTime = 0;
+  while (1) {
+    iterations++;
+    int execTime = (clock() - START) / CLOCKS_PER_SEC;
+    if (execTime - prevTime > 10) {
+      if(execTime >= 3600){
+        cout<<"time limit reach\n";
+        cout<<bestScore<<endl;
+        return ;
+      }
+      cout << "Iteration " << iterations << ", time: " << execTime << " seconds"
+           << endl;
+      prevTime = execTime;
+    }
 
         if (bestScore == g.size() + f.size()) {
             cout << "This must be the OPT with (#output_port(Circuit I) + "
