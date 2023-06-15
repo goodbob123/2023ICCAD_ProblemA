@@ -31,7 +31,7 @@ echo "q -f" >> "$dir"gv.dofile
 #create aag name file
 ./parser $circuit_1 ${dir}1.v
 ./parser $circuit_2 ${dir}2.v
-./gv -f "$dir"gv.dofile
+./gv -f "$dir"gv.dofile > /dev/null
 rm -rf "$dir"1.v
 rm -rf "$dir"2.v
 ./aigtoaig "$dir"1.aig "$dir"1.aag
@@ -45,5 +45,5 @@ rm -rf "$dir"1.aag
 rm -rf "$dir"2.aag
 
 #execution
-./SAT/test/satTest "$dir"name "$dir"circuit_1.aag "$dir"circuit_2.aag "$match"
-rm -rf "$dir"*.aig "$dir"*.aag "$dir"name "$dir"gv.dofile
+#./SAT/test/satTest "$dir"name "$dir"circuit_1.aag "$dir"circuit_2.aag "$match"
+rm -rf "$dir"*.aig "$dir"*.aag "$dir"name "$dir"gv.dofile "$dir"match

@@ -14,7 +14,6 @@ int main(int argc, char *argv[]){
     char *in_filename = argv[1];
     string out_filename = argv[2], line, buf;
     ifstream in_file(in_filename);
-    cout<<out_filename<<endl;
     ofstream out_file(out_filename);
     //cerr<<in_filename<<" "<<tag<<endl;
 
