@@ -31,7 +31,11 @@ echo "q -f" >> "$dir"gv.dofile
 #create aag name file
 ./parser $circuit_1 ${dir}1.v
 ./parser $circuit_2 ${dir}2.v
+<<<<<<< HEAD
 ./gv -f "$dir"gv.dofile > /dev/null
+=======
+./gv -f "$dir"gv.dofile
+>>>>>>> 1832d980af1ca7ac73355f9c5fa3e3ed7d20b023
 rm -rf "$dir"1.v
 rm -rf "$dir"2.v
 ./aigtoaig "$dir"1.aig "$dir"1.aag
