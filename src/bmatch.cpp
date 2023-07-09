@@ -297,6 +297,14 @@ void write_aig(){
         cout << "success strash!" << endl;
     }
 
+    sprintf(Command, "print_supp");
+    if (Cmd_CommandExecute(pAbc, Command)) {
+        fprintf(stdout, "Cannot execute command \"%s\".\n", Command);
+        return ;
+    } else {
+        cout << "success print_supp!" << endl;
+    }
+
     sprintf(Command, "write_aiger -s %s", "1.aig");
     if (Cmd_CommandExecute(pAbc, Command)) {
         fprintf(stdout, "Cannot execute command \"%s\".\n", Command);
@@ -327,6 +335,14 @@ void write_aig(){
         return ;
     } else {
         cout << "success strash!" << endl;
+    }
+
+    sprintf(Command, "print_supp");
+    if (Cmd_CommandExecute(pAbc, Command)) {
+        fprintf(stdout, "Cannot execute command \"%s\".\n", Command);
+        return ;
+    } else {
+        cout << "success print_supp!" << endl;
     }
 
     sprintf(Command, "write_aiger -s %s", "2.aig");
@@ -1206,9 +1222,9 @@ int main(int argc, char* argv[]) {
     while(getline(input_file, line)){
         buf = buf + line;
     }
-    cerr<<"buf "<<buf<<endl;
+    //cerr<<"buf "<<buf<<endl;
 
-    cout<<circuit_file1<<" "<<circuit_file2<<endl;
+    //cout<<circuit_file1<<" "<<circuit_file2<<endl;
     //delete redundant file
     remove("1.v");
     remove("2.v");
@@ -1223,8 +1239,8 @@ int main(int argc, char* argv[]) {
     remove("name");
 
     //parser
-    parser("CAD_testdata/case01/"+circuit_file1, "1.v");
-    parser("CAD_testdata/case01/"+circuit_file2, "2.v");
+    parser(circuit_file1, "1.v");
+    parser(circuit_file2, "2.v");
 
     //abc
     write_aig();
