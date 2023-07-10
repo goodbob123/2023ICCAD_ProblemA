@@ -14,6 +14,7 @@ extern "C"
 #include <cstring>
 #include <time.h>
 #include <unordered_map>
+#include <algorithm>
 using namespace std;
 ////////////////////////////////////////////////////////////////////////
 ///                        DECLARATIONS                              ///
@@ -441,14 +442,20 @@ class Port
         Port(const string& _name, const Var& _var) {
             name = _name;
             var  = _var;
+            support = 0;
+            // bus_size = 1;
+            support_group = 0;
         }
         ~Port() {}
         string getName() const { return name; }
         Var    getVar() const { return var; }
-
+        size_t getBusSize() const { return bus_size;}
+        size_t support;
+        size_t support_group;
     private:
         string name;
         Var    var;
+        size_t bus_size;
 };
 
 struct mtx2Mit {
@@ -706,6 +713,36 @@ test2() {
     miterSolver.addAigCNF(g[3].getVar(), y[2].getVar(), false, y[3].getVar(),
                           true);
 }
+
+bool cmpSupport(Port* i, Port* j) {return i->support > j->support;} // from big to small
+void getSupportGroup(vector<Port>& f, vector<Port>& g) {
+    assert(f.size() == g.size());
+
+    vector<Port*> f_sort, g_sort;
+    f_sort.reserve(f.size());
+    g_sort.reserve(g.size());
+    for (auto& fpt: f) f_sort.push_back(&fpt);
+    for (auto& gpt: g) g_sort.push_back(&gpt);
+
+    sort(f_sort.begin(), f_sort.end(), cmpSupport);
+    sort(g_sort.begin(), g_sort.end(), cmpSupport);
+
+    // for (auto fpt: f_sort) cout << fpt->getName() << endl;
+    // for (auto gpt: g_sort) cout << gpt->getName() << endl;
+    size_t current_grp = 1;
+    for (size_t i = 0; i < f_sort.size(); ++i) {
+        f_sort[i]->support_group = current_grp;
+        g_sort[i]->support_group = current_grp;
+        if (i == f_sort.size() - 1) break;
+        if (f_sort[i]->support > g_sort[i + 1]->support) ++current_grp;
+    }
+    // cout << "---" << endl;
+    // for (auto fpt: f_sort) cout << fpt->getName() << " " << fpt->support_group << endl;
+    // for (auto gpt: g_sort) cout << gpt->getName() << " " << gpt->support_group << endl;
+    
+    
+}
+
 void
 genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aig2) {
     x.clear();
@@ -1267,10 +1304,23 @@ int main(int argc, char* argv[]) {
     genCircuitModel(portMapping, aag1, aag2);
     buildMatrix();
     genMiterConstraint();
+    // for (auto p: x) cout << p.getName() << " " << p.getVar() << endl;
+    // for (auto p: y) cout << p.getName() << " " << p.getVar() << endl;
+    // for (auto p: fStar) cout << p << endl;
     cout << "Start solving..." << endl;
     solve();
     // output ans
     outputAns(out);
+
+    // for (auto& p: f) {
+    //     p.support = 3 * p.getVar() % 10 + 1;
+    //     cout << p.getName() << " " << p.getVar() << " " << p.support << endl;
+    // }
+    // for (auto& p: g) {
+    //     p.support = 3 * p.getVar() % 10 + 1;
+    //     cout << p.getName() << " " << p.getVar() << " " << p.support << endl;
+    // }
+    // getSupportGroup(g, f);
 
     remove("circuit_1.aag");
     remove("circuit_2.aag");
