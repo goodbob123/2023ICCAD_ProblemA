@@ -535,5 +535,5 @@ int main(int argc, char* argv[]) {
     remove("circuit_1.aag");
     remove("circuit_2.aag");
     remove("name");
-    //remove("support");
+    remove("support");
 }
