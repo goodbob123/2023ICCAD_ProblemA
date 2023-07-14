@@ -1,8 +1,0 @@
-abccmd read_verilog ./tests/inputs/test1.v
-abccmd strash
-abccmd write_aiger -s ./tests/inputs/test1.aig
-
-abccmd read_verilog ./tests/inputs/test2.v
-abccmd strash
-abccmd write_aiger -s ./tests/inputs/test2.aig
-q -f
