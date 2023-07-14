@@ -16,10 +16,11 @@ BMatchSolver::init(ifstream& portMapping, ifstream& aag1, ifstream& aag2, ostrea
     genCircuitModel(portMapping, aag1, aag2);
     buildMatrix();
     genMiterConstraint();
+    bestScore = 0;
 }
 
 void
-BMatchSolver::genFuncSupport(istream& in) {
+BMatchSolver::genFuncSupport(ifstream& in) {
     /*
     cout << "--------------- Circuit 1 -----------------" << endl;
     cout << "Input:" << endl;

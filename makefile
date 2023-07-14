@@ -38,4 +38,4 @@ $(TARGET): $(OBJS) ./lib/libabc.a
 
 clean:
 	rm -rf $(OBJS) $(TARGET)
-	rm -rf ./src/SAT/test/*.o
+	rm -rf match support name *.aig *.aag ./src/SAT/test/*.o

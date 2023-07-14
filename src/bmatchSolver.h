@@ -66,7 +66,7 @@ public:
     BMatchSolver() {};
     ~BMatchSolver() {};
     void init(ifstream& portMapping, ifstream& aag1, ifstream& aag2, ostream& out);
-    void genFuncSupport(istream& in);
+    void genFuncSupport(ifstream& in);
     void inputPreprocess();
     void outputPreprocess();
     void run();
