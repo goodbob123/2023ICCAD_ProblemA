@@ -21,7 +21,7 @@ sed -e '1628 a \    fclose(file);' src/base/abci/tempPrint.c > src/base/abci/abc
 make libabc.a
 
 # copy "libabc.a" static library to /lib
-ln -s ../lib/libabc.a ../abc/libabc.a;
+ln -s ../abc/libabc.a ../lib/libabc.a;
 
 # make bmatch
 cd ..; make;
