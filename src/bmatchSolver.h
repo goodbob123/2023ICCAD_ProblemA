@@ -1,33 +1,37 @@
-#include "./SAT/test/sat.h"
-#include <unordered_map>
+#include <time.h>
+
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <set>
-#include <time.h>
-#include <algorithm>
+#include <unordered_map>
+
+#include "./SAT/test/sat.h"
+#include "./cir/cirGate.h"
+#include "./cir/cirMgr.h"
 
 using namespace std;
 
-class Port
-{
-friend struct PortHashKey;
-public:
+class Port {
+    friend struct PortHashKey;
+
+   public:
     Port(const string& _name, const Var& _var) {
         name = _name;
-        var  = _var;
+        var = _var;
     }
     ~Port() {}
     string getName() const { return name; }
-    Var    getVar() const { return var; }
-    
-    void addSupport(int index) {supports.insert(index); }
-    size_t nofSupport() const { return supports.size(); }
-    bool isSupport(int index) const {return supports.find(index) != supports.end();}
+    Var getVar() const { return var; }
 
-private:
+    void addSupport(int index) { supports.insert(index); }
+    size_t nofSupport() const { return supports.size(); }
+    bool isSupport(int index) const { return supports.find(index) != supports.end(); }
+
+   private:
     string name;
-    Var    var;
-    set<int> supports; // output support for input port, input support for output port
+    Var var;
+    set<int> supports;  // output support for input port, input support for output port
 };
 
 struct PortHashKey {
@@ -38,7 +42,7 @@ struct PortHashKey {
         }
         sort(nof_support_of_support.begin(), nof_support_of_support.end());
     }
-    bool operator== (const PortHashKey& pk) const {
+    bool operator==(const PortHashKey& pk) const {
         if (nof_support_of_support.size() != pk.nof_support_of_support.size())
             return false;
         for (int i = 0; i < nof_support_of_support.size(); ++i) {
@@ -51,7 +55,7 @@ struct PortHashKey {
 };
 
 struct PortHashFunc {
-    size_t operator() (const PortHashKey& pk) const {
+    size_t operator()(const PortHashKey& pk) const {
         return pk.nof_support_of_support.size();
     }
 };
@@ -61,19 +65,17 @@ struct mtx2Mit {
 };
 
 class BMatchSolver {
-
-public:
-    BMatchSolver() {};
-    ~BMatchSolver() {};
+   public:
+    BMatchSolver(){};
+    ~BMatchSolver(){};
     void init(ifstream& portMapping, ifstream& aag1, ifstream& aag2, ostream& out);
     void genFuncSupport(ifstream& in);
     void inputPreprocess();
-    void outputPreprocess();
+    void outputPreprocess(ifstream& in1, ifstream& in2);
     void run();
     void outputAns(ostream& out);
 
-protected:
-
+   protected:
     void genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aag2);
     void readPortMapping(ifstream& in);
     void readAAG(ifstream& in, bool circuitOne);
@@ -87,11 +89,14 @@ protected:
     int getScore();
     void scoreGte(int x);
 
+    void addEqualConstraint(ifstream& in1, ifstream& in2);
+    void createEqualRelationByGroup(const vector<pair<CirGate*, bool>>& group_f,
+                                    const vector<pair<CirGate*, bool>>& group_g);
 
     // SAT Solver
     SatSolver matrixSolver, miterSolver;
     SatSolver outputSolver;
-    
+
     // Circuit 1
     vector<Port> x;
     vector<Port> f;
@@ -99,16 +104,16 @@ protected:
     // Circuit 2
     vector<Port> y;
     vector<Port> g;
-    vector<Var>  fStar;
+    vector<Var> fStar;
 
     // I/O Matrix
     vector<vector<mtx2Mit>> a, b, c, d;
     vector<vector<Var>> outputC, outputD;
 
     // Answer
-    int                  bestScore;
+    int bestScore;
     vector<vector<bool>> ans_a, ans_b, ans_c, ans_d;
-    vector<Var>          ansHelper;
+    vector<Var> ansHelper;
 
     // time
     double START;
@@ -116,5 +121,4 @@ protected:
 
     // vector<set<int>> fSupport;
     // vector<set<int>> gSupport;
-
 };

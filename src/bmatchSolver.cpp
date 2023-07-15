@@ -1,11 +1,10 @@
 #include "bmatchSolver.h"
-#include <string>
+
 #include <map>
+#include <string>
 #include <unordered_map>
 
-void
-BMatchSolver::init(ifstream& portMapping, ifstream& aag1, ifstream& aag2, ostream& out) {
-
+void BMatchSolver::init(ifstream& portMapping, ifstream& aag1, ifstream& aag2, ostream& out) {
     std::ios::sync_with_stdio(false);
     std::cin.tie(0);
 
@@ -19,8 +18,7 @@ BMatchSolver::init(ifstream& portMapping, ifstream& aag1, ifstream& aag2, ostrea
     bestScore = 0;
 }
 
-void
-BMatchSolver::genFuncSupport(ifstream& in) {
+void BMatchSolver::genFuncSupport(ifstream& in) {
     /*
     cout << "--------------- Circuit 1 -----------------" << endl;
     cout << "Input:" << endl;
@@ -82,14 +80,13 @@ BMatchSolver::genFuncSupport(ifstream& in) {
 }
 
 class Hash {
-public:
-    size_t operator() (const pair<int, int>& p) const {
+   public:
+    size_t operator()(const pair<int, int>& p) const {
         return p.first ^ p.second;
     }
 };
 
-void 
-BMatchSolver::inputPreprocess() {
+void BMatchSolver::inputPreprocess() {
     cerr << "inputPreprocess start..." << endl;
 
     for (int j = 0; j < x.size(); ++j) {
@@ -98,70 +95,149 @@ BMatchSolver::inputPreprocess() {
                 matrixSolver.assertProperty(a[i][j].matrixVar, false);
                 matrixSolver.assertProperty(b[i][j].matrixVar, false);
             }
-
         }
     }
-/*
-    map<int, int> xSupp;
-    map<int, int> ySupp;
-    for (int j = 0; j < x.size(); ++j)
-        xSupp[x[j].nofSupport()] ++;
-    for (int i = 0; i < y.size(); ++i)
-        ySupp[y[i].nofSupport()] ++;
-    map<int, int>::iterator itx;
-    map<int, int>::iterator ity;
-    if (xSupp.size() != ySupp.size()) {
-        cerr << "not equal" << endl;
-        return;
-    }
-    itx = xSupp.begin();
-    ity = ySupp.begin();
-    while (itx != xSupp.end()) {
-        if (itx->first != ity->first) {
-            cerr << "not equal in first" << endl;
+    /*
+        map<int, int> xSupp;
+        map<int, int> ySupp;
+        for (int j = 0; j < x.size(); ++j)
+            xSupp[x[j].nofSupport()] ++;
+        for (int i = 0; i < y.size(); ++i)
+            ySupp[y[i].nofSupport()] ++;
+        map<int, int>::iterator itx;
+        map<int, int>::iterator ity;
+        if (xSupp.size() != ySupp.size()) {
+            cerr << "not equal" << endl;
             return;
         }
-        if (itx->second != ity->second) {
-            cerr << "not equal in second" << endl;
-            return;
+        itx = xSupp.begin();
+        ity = ySupp.begin();
+        while (itx != xSupp.end()) {
+            if (itx->first != ity->first) {
+                cerr << "not equal in first" << endl;
+                return;
+            }
+            if (itx->second != ity->second) {
+                cerr << "not equal in second" << endl;
+                return;
+            }
+            itx ++;
+            ity ++;
         }
-        itx ++;
-        ity ++;
-    }
-//*/
+    //*/
 
-/*  
-    unordered_map<PortHashKey, vector<int>, PortHashFunc> portHash;
-    int count = 0;
-    for (int j = 0; j < x.size(); ++j) {
-        portHash[PortHashKey(x, x[j])].push_back(j);
-        if (portHash[PortHashKey(x, x[j])].size() != 1) {
-            count ++;
-        }
-    }
-    cout << "equal: " << x.size() - count << endl;
-    cout << "not equal: " << count << endl;
-
-    for (int i = 0; i < y.size(); ++i) {
-        set<int> candidate(portHash[PortHashKey(y, y[i])].begin(), portHash[PortHashKey(y, y[i])].end());
-        if (candidate.empty()) {
-            cerr << "EMPTY!" << endl;
-            return;
-        }
+    /*
+        unordered_map<PortHashKey, vector<int>, PortHashFunc> portHash;
+        int count = 0;
         for (int j = 0; j < x.size(); ++j) {
-            if (candidate.find(j) != candidate.end()) {
-                matrixSolver.assertProperty(a[i][j].matrixVar, false);
-                matrixSolver.assertProperty(b[i][j].matrixVar, false);
+            portHash[PortHashKey(x, x[j])].push_back(j);
+            if (portHash[PortHashKey(x, x[j])].size() != 1) {
+                count ++;
             }
         }
-    }
-*/   
+        cout << "equal: " << x.size() - count << endl;
+        cout << "not equal: " << count << endl;
+
+        for (int i = 0; i < y.size(); ++i) {
+            set<int> candidate(portHash[PortHashKey(y, y[i])].begin(), portHash[PortHashKey(y, y[i])].end());
+            if (candidate.empty()) {
+                cerr << "EMPTY!" << endl;
+                return;
+            }
+            for (int j = 0; j < x.size(); ++j) {
+                if (candidate.find(j) != candidate.end()) {
+                    matrixSolver.assertProperty(a[i][j].matrixVar, false);
+                    matrixSolver.assertProperty(b[i][j].matrixVar, false);
+                }
+            }
+        }
+    */
     cerr << "inputPreprocess end." << endl;
 }
 
-void
-BMatchSolver::outputPreprocess() {
+static unordered_map<int, int> id2i;
+static unordered_map<int, int> id2j;
+
+void BMatchSolver::createEqualRelationByGroup(const vector<pair<CirGate*, bool>>& group_f,
+                                              const vector<pair<CirGate*, bool>>& group_g) {
+    vector<Var> mappingVar;
+    int index_f, index_g;
+    bool isNagative_f, isNagative_g;
+    Var v;
+
+    for (size_t i = 0; i < group_g.size(); ++i) {
+        index_f = i < group_f.size() ? id2i[group_f[i].first->getId()] : id2i[group_f.back().first->getId()];
+        index_g = id2j[group_g[i].first->getId()];
+        isNagative_f = i < group_f.size() ? group_f[i].second : group_f.back().second;
+        isNagative_g = group_g[i].second;
+        v = isNagative_f == isNagative_g ? c[index_g][index_f].matrixVar : d[index_g][index_f].matrixVar;
+        mappingVar.push_back(v);
+    }
+
+    // ----------
+    // A B C
+    // D E F G
+    // if A=D (c_AD -> c BE , c_AD->c_CF, c_AD->c_CG)
+    // =(~c_AD + c_BE)(~c_AD+c_CF)
+    for (size_t i = 0; i < mappingVar.size(); ++i) {
+        for (size_t j = 0; j < mappingVar.size(); ++j) {
+            if (j == i) continue;
+            vector<Lit> lits;
+            lits.push_back(~Lit(mappingVar[i]));
+            lits.push_back(Lit(mappingVar[j]));
+            matrixSolver.addCNF(lits);
+            lits.clear();
+        }
+    }
+    return;
+}
+
+void BMatchSolver::addEqualConstraint(ifstream& in1, ifstream& in2) {
+    CirMgr* c1 = new CirMgr;
+    CirMgr* c2 = new CirMgr;
+    if (!in1) {
+        cout << "can not open file 1" << endl;
+        return;
+    }
+    if (!in2) {
+        cout << "can not open file 2" << endl;
+        return;
+    }
+
+    c1->readCircuit(in1);
+    c2->readCircuit(in2);
+    c1->randomSim();
+    c2->randomSim();
+    vector<vector<pair<CirGate*, bool>>> equalGroup_1, equalGroup_2;
+    equalGroup_1 = c1->fraigForGroup();
+    equalGroup_2 = c2->fraigForGroup();
+
+    for (int i = 0; i < c1->POs.size(); ++i) {
+        id2i[c1->POs[i]->getId()] = i;
+    }
+    for (int j = 0; j < c2->POs.size(); ++j) {
+        id2j[c2->POs[j]->getId()] = j;
+    }
+    // TODO: modify fraig th return group
+    for (size_t index_1 = 0; index_1 < equalGroup_1.size(); ++index_1) {
+        for (size_t index_2 = index_1 + 1; index_2 < equalGroup_2.size(); ++index_2) {
+            // valid mapping relation should #n of f <= #n of g
+            if (equalGroup_1[index_1].size() <= equalGroup_2[index_2].size()) {
+                // cout << "start to map group...index: (f,g): " << index_1 << " , " << index_2 << endl;
+                // cout << "size of f: " << equalGroup_1[index_1].size() << " size of g: " << equalGroup_2[index_2].size() << endl;
+                createEqualRelationByGroup(equalGroup_1[index_1],
+                                           equalGroup_2[index_2]);
+            }
+        }
+    }
+    delete c1, c2;
+    // TODO: lonely output: g's more output to 's 1 output (should transfer aag to var)
+}
+
+void BMatchSolver::outputPreprocess(ifstream& in1, ifstream& in2) {
     cerr << "outputPreprocess start..." << endl;
+    in1.seekg(0, ios_base::beg);
+    in2.seekg(0, ios_base::beg);
     for (int j = 0; j < f.size(); ++j) {
         for (int i = 0; i < g.size(); ++i) {
             if (f[j].nofSupport() != g[i].nofSupport()) {
@@ -170,61 +246,62 @@ BMatchSolver::outputPreprocess() {
             }
         }
     }
+    addEqualConstraint(in1, in2);
+    in1.close();
+    in2.close();
+    /*
+        map<int, int> fSupp;
+        map<int, int> gSupp;
+        for (int j = 0; j < f.size(); ++j)
+            fSupp[f[j].nofSupport()] ++;
+        for (int i = 0; i < g.size(); ++i)
+            gSupp[g[i].nofSupport()] ++;
+        map<int, int>::iterator itf;
+        map<int, int>::iterator itg;
+        if (fSupp.size() != gSupp.size()) {
+            cerr << "not equal" << endl;
+            return;
+        }
+        itf = fSupp.begin();
+        itg = gSupp.begin();
+        while (itf != fSupp.end()) {
+            if (itf->first != itg->first) {
+                cerr << "not equal in first" << endl;
+                return;
+            }
+            if (itf->second != itg->second) {
+                cerr << "not equal in second" << endl;
+                return;
+            }
+            itf ++;
+            itg ++;
+        }
+    //*/
+    /*
+        unordered_map<PortHashKey, vector<int>, PortHashFunc> portHash;
+        int count = 0;
+        for (int j = 0; j < f.size(); ++j) {
+            portHash[PortHashKey(x, f[j])].push_back(j);
+        }
 
-/*
-    map<int, int> fSupp;
-    map<int, int> gSupp;
-    for (int j = 0; j < f.size(); ++j)
-        fSupp[f[j].nofSupport()] ++;
-    for (int i = 0; i < g.size(); ++i)
-        gSupp[g[i].nofSupport()] ++;
-    map<int, int>::iterator itf;
-    map<int, int>::iterator itg;
-    if (fSupp.size() != gSupp.size()) {
-        cerr << "not equal" << endl;
-        return;
-    }
-    itf = fSupp.begin();
-    itg = gSupp.begin();
-    while (itf != fSupp.end()) {
-        if (itf->first != itg->first) {
-            cerr << "not equal in first" << endl;
-            return;
-        }
-        if (itf->second != itg->second) {
-            cerr << "not equal in second" << endl;
-            return;
-        }
-        itf ++;
-        itg ++;
-    }
-//*/
-/*
-    unordered_map<PortHashKey, vector<int>, PortHashFunc> portHash;
-    int count = 0;
-    for (int j = 0; j < f.size(); ++j) {
-        portHash[PortHashKey(x, f[j])].push_back(j);
-    }
-
-    for (int i = 0; i < g.size(); ++i) {
-        set<int> candidate(portHash[PortHashKey(y, g[i])].begin(), portHash[PortHashKey(y, g[i])].end());
-        if (candidate.empty()) {
-            cerr << "------------------- EMPTY! -------------------------" << endl;
-            return;
-        }
-        for (int j = 0; j < g.size(); ++j) {
-            if (candidate.find(j) == candidate.end()) {
-                outputSolver.assertProperty(outputC[i][j], false);
-                outputSolver.assertProperty(outputD[i][j], false);
+        for (int i = 0; i < g.size(); ++i) {
+            set<int> candidate(portHash[PortHashKey(y, g[i])].begin(), portHash[PortHashKey(y, g[i])].end());
+            if (candidate.empty()) {
+                cerr << "------------------- EMPTY! -------------------------" << endl;
+                return;
+            }
+            for (int j = 0; j < g.size(); ++j) {
+                if (candidate.find(j) == candidate.end()) {
+                    outputSolver.assertProperty(outputC[i][j], false);
+                    outputSolver.assertProperty(outputD[i][j], false);
+                }
             }
         }
-    }
-//*/
+    //*/
     cerr << "outputPreprocess end" << endl;
 }
 
-void 
-BMatchSolver::run() {
+void BMatchSolver::run() {
     cerr << "start run..." << endl;
     scoreGte((g.size() + f.size()));
     while (1) {
@@ -254,14 +331,14 @@ BMatchSolver::run() {
     outputAns(cout);
 }
 
-void
-BMatchSolver::outputAns(ostream& out) {
+void BMatchSolver::outputAns(ostream& out) {
     if (bestScore == 0) {
         cout << "No matching found!" << endl;
         return;
     }
     cout << "----------Optimal Matching----------" << endl;
-    cout << "Best Score: " << bestScore << endl << endl;
+    cout << "Best Score: " << bestScore << endl
+         << endl;
     cout << "Input matrix: " << endl;
     for (int i = 0; i < ans_a.size(); ++i) {
         for (int j = 0; j < ans_a[0].size(); ++j) {
@@ -286,7 +363,7 @@ BMatchSolver::outputAns(ostream& out) {
         // all input in circuit 1 must be mapped
         out << "INGROUP" << endl;
         out << "1 + <" << x[j].getName() << ">"
-            << endl; // include "<>" or not ????
+            << endl;  // include "<>" or not ????
         for (int i = 0; i < y.size(); ++i) {
             if (ans_a[i][j] != 0) {
                 out << "2 + <" << y[i].getName() << ">" << endl;
@@ -295,7 +372,8 @@ BMatchSolver::outputAns(ostream& out) {
                 out << "2 - <" << y[i].getName() << ">" << endl;
             }
         }
-        out << "END" << endl << endl;
+        out << "END" << endl
+            << endl;
     }
     // OUTGROUP
     for (int j = 0; j < ans_c[0].size(); ++j) {
@@ -314,21 +392,22 @@ BMatchSolver::outputAns(ostream& out) {
                 }
             }
         }
-        if (circuit1Mapped) out << "END" << endl << endl;
+        if (circuit1Mapped) out << "END" << endl
+                                << endl;
     }
     // CONSTGROUP
     out << "CONSTGROUP" << endl;
     for (int i = 0; i < y.size(); ++i) {
         if (ans_a[i][x.size()])
-            out << "+ <" << y[i].getName() << ">" << endl; // + to 0
+            out << "+ <" << y[i].getName() << ">" << endl;  // + to 0
         if (ans_b[i][x.size()])
-            out << "- <" << y[i].getName() << ">" << endl; // - to 1
+            out << "- <" << y[i].getName() << ">" << endl;  // - to 1
     }
-    out << "END" << endl << endl;
+    out << "END" << endl
+        << endl;
 }
 
-void
-BMatchSolver::genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aag2) {
+void BMatchSolver::genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aag2) {
     x.clear();
     f.clear();
     y.clear();
@@ -346,19 +425,18 @@ BMatchSolver::genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& a
     }
 }
 
-void
-BMatchSolver::readPortMapping(ifstream& in) {
+void BMatchSolver::readPortMapping(ifstream& in) {
     // <1|2>(int) <"input"|"output">(string) <PortName>(string) <VarInCNF>(int)
-    int    one_two;
+    int one_two;
     string IO;
     string name;
-    int    litInAAG;
+    int litInAAG;
     while (in >> one_two >> IO >> name >> litInAAG) {
         vector<Port>& IOPorts =
             (one_two == 1 ? (IO == "input" ? x : f) : (IO == "input" ? y : g));
         Var v = AAG2Var(litInAAG / 2, (one_two == 1));
-        if (litInAAG % 2 == 1) {                       // inverted output
-            Var         invVar = miterSolver.newVar(); // invVar = ~v
+        if (litInAAG % 2 == 1) {                // inverted output
+            Var invVar = miterSolver.newVar();  // invVar = ~v
             vector<Lit> lits;
             lits.push_back(Lit(invVar));
             lits.push_back(Lit(v));
@@ -376,11 +454,10 @@ BMatchSolver::readPortMapping(ifstream& in) {
     in.close();
 }
 
-void
-BMatchSolver::readAAG(ifstream& in, bool circuitOne) {
-    int    litInAAG;
+void BMatchSolver::readAAG(ifstream& in, bool circuitOne) {
+    int litInAAG;
     string aag;
-    int    M, I, L, O, A;
+    int M, I, L, O, A;
     in >> aag >> M >> I >> L >> O >> A;
     for (int i = 0; i < I; ++i) {
         int temp;
@@ -393,18 +470,16 @@ BMatchSolver::readAAG(ifstream& in, bool circuitOne) {
     int lf, la, lb;
     for (int i = 0; i < A; ++i) {
         in >> lf >> la >> lb;
-        Var  vf = AAG2Var(lf / 2, circuitOne);
-        Var  va = AAG2Var(la / 2, circuitOne);
+        Var vf = AAG2Var(lf / 2, circuitOne);
+        Var va = AAG2Var(la / 2, circuitOne);
         bool fa = la % 2;
-        Var  vb = AAG2Var(lb / 2, circuitOne);
+        Var vb = AAG2Var(lb / 2, circuitOne);
         bool fb = lb % 2;
         miterSolver.addAigCNF(vf, va, fa, vb, fb);
     }
-    in.close();
 }
 
-void
-BMatchSolver::buildMatrix() {
+void BMatchSolver::buildMatrix() {
     // TODO: add matrix constraints based on x, f, y, g
     a.clear();
     a.reserve(y.size());
@@ -472,7 +547,7 @@ BMatchSolver::buildMatrix() {
     // sum >= 1
     vector<Lit> ls;
     ls.reserve(2 * y.size());
-    for (int j = 0; j < x.size(); ++j) { // exclude the zero/one column
+    for (int j = 0; j < x.size(); ++j) {  // exclude the zero/one column
         ls.clear();
         for (int i = 0; i < y.size(); ++i) {
             ls.push_back(Lit(a[i][j].matrixVar));
@@ -540,21 +615,19 @@ BMatchSolver::buildMatrix() {
 
             vector<Lit> lits2;
             lits2.push_back(Lit(ansHelper[j]));
-            lits2.push_back(~Lit(outputC[i][j])); // (~c + v)
+            lits2.push_back(~Lit(outputC[i][j]));  // (~c + v)
             outputSolver.addCNF(lits2);
 
-            lits2[1] = ~Lit(outputD[i][j]); // (~d + v)
+            lits2[1] = ~Lit(outputD[i][j]);  // (~d + v)
             outputSolver.addCNF(lits2);
         }
         outputSolver.addCNF(lits);
         // aggressiveLits.push_back(Lit(ansHelper[j]));
     }
     // outputSolver.addCNF(aggressiveLits);
-
 }
 
-void
-BMatchSolver::genMiterConstraint() {
+void BMatchSolver::genMiterConstraint() {
     // TODO: \phi_a constraints
     // p -> y == x => (~p + x + ~y)(~p + ~x + y)
 
@@ -645,7 +718,7 @@ BMatchSolver::genMiterConstraint() {
         // a <-> b+c+d+e+...+ => (¬B ∨ A) ∧ (¬C ∨ A) ∧ (¬D ∨ A) ∧ (¬E ∨ A) ∧ (¬A
         // ∨ B ∨ C ∨ D ∨ E)
         vector<Lit> lits2;
-        Var         care = miterSolver.newVar();
+        Var care = miterSolver.newVar();
         lits2.push_back(~Lit(care));
         for (int j = 0; j < f.size(); ++j) {
             vector<Lit> lits3;
@@ -663,13 +736,12 @@ BMatchSolver::genMiterConstraint() {
         Var q = miterSolver.newVar();
         miterSolver.addAigCNF(q, care, false, p, false);
 
-        lits.push_back(Lit(q)); // q means real no match
+        lits.push_back(Lit(q));  // q means real no match
     }
     miterSolver.addCNF(lits);
 }
 
-bool 
-BMatchSolver::outputSolve(vector<Var>& outputPairs) {
+bool BMatchSolver::outputSolve(vector<Var>& outputPairs) {
     cerr << "in outputSolve" << endl;
     outputPairs.clear();
     bool result = outputSolver.solve();
@@ -696,12 +768,12 @@ BMatchSolver::outputSolve(vector<Var>& outputPairs) {
             assert(value != -1);
             if (value != -1) {
                 lits.push_back(value ? ~Lit(outputC[i][j])
-                                        : Lit(outputC[i][j]));
+                                     : Lit(outputC[i][j]));
             }
             value = outputSolver.getValue(outputD[i][j]);
             if (value != -1) {
                 lits.push_back(value ? ~Lit(outputD[i][j])
-                                        : Lit(outputD[i][j]));
+                                     : Lit(outputD[i][j]));
             }
             assert(value != -1);
         }
@@ -710,8 +782,7 @@ BMatchSolver::outputSolve(vector<Var>& outputPairs) {
     return true;
 }
 
-bool 
-BMatchSolver::isValidMo(const set<Var>& currentResult) {
+bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
     // get input matrix
     matrixSolver.assumeRelease();
     for (int i = 0; i < fStar.size(); ++i) {
@@ -735,14 +806,14 @@ BMatchSolver::isValidMo(const set<Var>& currentResult) {
         for (int i = 0; i < y.size(); ++i) {
             for (int j = 0; j < x.size() + 1; ++j) {
                 int matrixVarValue = matrixSolver.getValue(a[i][j].matrixVar);
-                if (matrixVarValue != -1) { // -1 means unknown
+                if (matrixVarValue != -1) {  // -1 means unknown
                     miterSolver.assumeProperty(a[i][j].miterVar,
-                                                matrixVarValue);
+                                               matrixVarValue);
                 }
                 matrixVarValue = matrixSolver.getValue(b[i][j].matrixVar);
-                if (matrixVarValue != -1) { // -1 means unknown
+                if (matrixVarValue != -1) {  // -1 means unknown
                     miterSolver.assumeProperty(b[i][j].miterVar,
-                                                matrixVarValue);
+                                               matrixVarValue);
                 }
             }
         }
@@ -750,29 +821,27 @@ BMatchSolver::isValidMo(const set<Var>& currentResult) {
         for (int i = 0; i < fStar.size(); ++i) {
             for (int j = 0; j < f.size(); ++j) {
                 int matrixVarValue = matrixSolver.getValue(c[i][j].matrixVar);
-                if (matrixVarValue != -1) { // -1 means unknown
+                if (matrixVarValue != -1) {  // -1 means unknown
                     miterSolver.assumeProperty(c[i][j].miterVar,
-                                                matrixVarValue);
+                                               matrixVarValue);
                 }
                 matrixVarValue = matrixSolver.getValue(d[i][j].matrixVar);
-                if (matrixVarValue != -1) { // -1 means unknown
+                if (matrixVarValue != -1) {  // -1 means unknown
                     miterSolver.assumeProperty(d[i][j].miterVar,
-                                                matrixVarValue);
+                                               matrixVarValue);
                 }
             }
         }
-        if (miterSolve()) { // UNSAT -> find a valid mapping
+        if (miterSolve()) {  // UNSAT -> find a valid mapping
             // Update current answer and block answer
             return true;
-        }
-        else {
+        } else {
             // cout << "QQ" << endl;
         }
     }
 }
 
-bool
-BMatchSolver::miterSolve() {
+bool BMatchSolver::miterSolve() {
     bool miterResult = miterSolver.assumpSolve();
     if (!miterResult) {
         // UNSAT => find a valid mapping
@@ -806,7 +875,7 @@ BMatchSolver::miterSolve() {
         outputSolver.addCNF(lits);
         int score = getScore();
         cout << "Score: " << score << ", Best Score: " << bestScore << endl;
-            
+
         if (score > bestScore) {
             bestScore = score;
             scoreGte(score + 1);
@@ -830,7 +899,7 @@ BMatchSolver::miterSolve() {
                 for (int k = 0; k < y.size(); ++k) {
                     if (!g[i].isSupport(k))
                         continue;
-                    for (int l = 0; l < x.size(); ++l) { // +1 or not
+                    for (int l = 0; l < x.size(); ++l) {  // +1 or not
                         if (!f[j].isSupport(l))
                             continue;
                         if (miterSolver.getValue(y[k].getVar()) !=
@@ -849,16 +918,14 @@ BMatchSolver::miterSolve() {
     return false;
 }
 
-Var
-BMatchSolver::AAG2Var(int AAGVar, bool circuitOne) {
+Var BMatchSolver::AAG2Var(int AAGVar, bool circuitOne) {
     if (!circuitOne) AAGVar = -AAGVar;
     if (AAG2VarHashmap.find(AAGVar) == AAG2VarHashmap.end())
         AAG2VarHashmap[AAGVar] = miterSolver.newVar();
     return AAG2VarHashmap[AAGVar];
 }
 
-int
-BMatchSolver::getScore() {
+int BMatchSolver::getScore() {
     // TODO: calcutate current score from c, d and compare it with bestScore
 
     int score = 0;
@@ -876,14 +943,13 @@ BMatchSolver::getScore() {
                 columnMap = true;
         }
         if (columnMap)
-            score ++;
+            score++;
     }
     cout << "in getScore func: " << score << endl;
     return score;
 }
 
-void
-BMatchSolver::scoreGte(int x) {
+void BMatchSolver::scoreGte(int x) {
     // return;
     vector<Lit> clause;
     for (int j = 0; j < f.size(); ++j) {

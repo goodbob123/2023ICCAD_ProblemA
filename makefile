@@ -4,7 +4,9 @@ CFLAGS := -g -O3 -DNDEBUG
 LDFLAGS := -lm -ldl -lreadline -lpthread
 
 TARGET := bmatch
-SRCS := ./src/bmatch.cpp ./src/aigtoaig.c ./src/aiger.c ./src/SAT/test/File.cpp ./src/SAT/test/Proof.cpp ./src/SAT/test/Solver.cpp ./src/bmatchSolver.cpp
+SRCS := ./src/bmatch.cpp ./src/aigtoaig.c ./src/aiger.c ./src/SAT/test/File.cpp ./src/SAT/test/Proof.cpp ./src/SAT/test/Solver.cpp ./src/bmatchSolver.cpp \
+  ./src/cir/cirFraig.cpp ./src/cir/cirGate.cpp ./src/cir/cirMgr.cpp ./src/cir/cirSim.cpp
+  
 OBJS := $(SRCS:.cpp=.o)
 OBJS := $(OBJS:.c=.o)
 
@@ -35,6 +37,19 @@ $(TARGET): $(OBJS) ./lib/libabc.a
 
 ./src/bmatchSolver.o: ./src/bmatchSolver.cpp ./src/bmatchSolver.h 
 	$(PP) $(CFLAGS) -std=c++11 -c ./src/bmatchSolver.cpp -o ./src/bmatchSolver.o
+
+./src/cir/cirFraig.o: ./src/cir/cirFraig.cpp
+	$(PP) $(CFLAGS) -std=c++11 -c ./src/cir/cirFraig.cpp -o ./src/cir/cirFraig.o
+
+./src/cir/cirGate.o: ./src/cir/cirGate.cpp
+	$(PP) $(CFLAGS) -std=c++11 -c ./src/cir/cirGate.cpp -o ./src/cir/cirGate.o
+
+./src/cir/cirMgr.o: ./src/cir/cirMgr.cpp
+	$(PP) $(CFLAGS) -std=c++11 -c ./src/cir/cirMgr.cpp -o  ./src/cir/cirMgr.o
+
+./src/cir/cirSim.o: ./src/cir/cirSim.cpp
+	$(PP) $(CFLAGS) -std=c++11 -c ./src/cir/cirSim.cpp -o ./src/cir/cirSim.o
+
 
 clean:
 	rm -rf $(OBJS) $(TARGET)
