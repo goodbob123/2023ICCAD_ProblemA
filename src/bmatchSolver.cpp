@@ -302,9 +302,20 @@ void BMatchSolver::outputPreprocess(ifstream& in1, ifstream& in2) {
 }
 
 void BMatchSolver::run() {
+    int prevTime = 0;
     cerr << "start run..." << endl;
-    scoreGte((g.size() + f.size()));
+    scoreGte((2));
     while (1) {
+        int execTime = (clock() - START) / CLOCKS_PER_SEC;
+        if (execTime - prevTime >= 10) {
+            if(execTime >= 3500){
+                cout<<"time limit reach\n";
+                cout<<bestScore<<endl;
+                return ;
+            }
+            cout <<"time: " << execTime << " seconds" << endl;
+            prevTime = execTime;
+        }
         if (bestScore == g.size() + f.size()) {
             cout << "This must be the OPT with (#output_port(Circuit I) + "
                     "#output_port(Circuit II)) = "

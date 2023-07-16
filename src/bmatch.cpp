@@ -31,6 +31,8 @@ extern "C" {
 // parser
 ////////////////////////////////////
 
+double START;
+
 constexpr unsigned int str2int(const char* str, int h = 0) {
     return !str[h] ? 5381 : (str2int(str, h + 1) * 33) ^ str[h];
 }
@@ -463,6 +465,7 @@ void mapping(const char* in_filename, ofstream& out_file) {
 
 int main(int argc, char* argv[]) {
     // argument
+    START = clock();
     char *input = argv[1], *match = argv[2];
     string circuit_file1, circuit_file2, line, buf = "";
 
