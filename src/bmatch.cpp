@@ -462,6 +462,11 @@ void mapping(const char* in_filename, ofstream& out_file) {
 ////////////////////////////////////
 
 int main(int argc, char* argv[]) {
+    if(argc!=3){
+        cerr<<"Wrong input format, please follow the example below. "<<endl;
+        cerr<<"./bmatch <CAD_testdata/case01/input> <match>"<<endl;
+        exit(0);
+    }
     // argument
     char *input = argv[1], *match = argv[2];
     string circuit_file1, circuit_file2, line, buf = "";

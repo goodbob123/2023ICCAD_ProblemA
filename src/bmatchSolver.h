@@ -92,6 +92,9 @@ class BMatchSolver {
     void addEqualConstraint(ifstream& in1, ifstream& in2);
     void createEqualRelationByGroup(const vector<pair<CirGate*, bool>>& group_f,
                                     const vector<pair<CirGate*, bool>>& group_g);
+    void createEqualRelationByOneOutput(const int index_f,
+                const vector<pair<CirGate*, bool>>& group_g);
+
 
     // SAT Solver
     SatSolver matrixSolver, miterSolver;
