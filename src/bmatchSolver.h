@@ -72,7 +72,7 @@ class BMatchSolver {
     void genFuncSupport(ifstream& in);
     void inputPreprocess();
     void outputPreprocess(ifstream& in1, ifstream& in2);
-    void run();
+    void run(ostream& out);
     void outputAns(ostream& out);
 
    protected:

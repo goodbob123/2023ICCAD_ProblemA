@@ -549,7 +549,7 @@ int main(int argc, char* argv[]) {
     bmatchSolver.inputPreprocess();
     bmatchSolver.outputPreprocess(aag1, aag2);
     // return 0;
-    bmatchSolver.run();
+    bmatchSolver.run(out);
 
     remove("circuit_1.aag");
     remove("circuit_2.aag");

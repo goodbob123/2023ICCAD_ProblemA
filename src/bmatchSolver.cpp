@@ -397,7 +397,7 @@ void BMatchSolver::outputPreprocess(ifstream& in1, ifstream& in2) {
     cerr << "outputPreprocess end" << endl;
 }
 
-void BMatchSolver::run() {
+void BMatchSolver::run(ostream& out) {
     int prevTime = 0;
     cerr << "start run..." << endl;
     scoreGte((2));
@@ -435,7 +435,7 @@ void BMatchSolver::run() {
         }
         isValidMo(currentResult);
     }
-    outputAns(cout);
+    outputAns(out);
 }
 
 void BMatchSolver::outputAns(ostream& out) {
