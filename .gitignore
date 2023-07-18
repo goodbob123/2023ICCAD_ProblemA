@@ -7,3 +7,5 @@
 *.a
 .vscode
 .clang-format
+bmatch
+output
