@@ -4,6 +4,8 @@
 #include <string>
 #include <unordered_map>
 
+size_t Order::en_count= 0;
+
 void BMatchSolver::init(ifstream& portMapping, ifstream& aag1, ifstream& aag2, ostream& out) {
     std::ios::sync_with_stdio(false);
     std::cin.tie(0);
@@ -16,6 +18,51 @@ void BMatchSolver::init(ifstream& portMapping, ifstream& aag1, ifstream& aag2, o
     buildMatrix();
     genMiterConstraint();
     bestScore = 0;
+}
+
+void BMatchSolver::testOutputMgr() {  // pushPort
+
+    // cout << "t0" << endl;
+    // outMgr.step();
+    // outMgr.printAssign();
+    // outMgr.step();
+    // outMgr.printAssign();
+    // outMgr.backTrack();
+    // outMgr.printAssign();
+    // outMgr.step();
+    // outMgr.printAssign();
+    // outMgr.step();
+    // outMgr.printAssign();
+    // outMgr.step();
+    // outMgr.printAssign();
+    // outMgr.backTrack();
+    // outMgr.printAssign();
+    // outMgr.step();
+    // outMgr.printAssign();
+    // outMgr.step();
+    // outMgr.printAssign();
+    // outMgr.backTrack();
+    // outMgr.printAssign();
+    // outMgr.step();
+    // outMgr.printAssign();
+    Order* cur = outMgr.getHead();
+    // cout << cur << endl;
+    // o_mgr.printAssign();
+    while (cur != 0) {
+        // cur->printMapping();
+        // cout << (o_mgr.isBacktrack() ? "T" : "F") << endl;
+        vector<Order*> assignment = outMgr.getAllAssign();
+        for (auto assign: assignment) {
+            assign->printMapping();
+        }
+        cout << "____" << endl;
+        outMgr.printAssign();
+        cout << "____" << endl;
+        cur = outMgr.step();
+        // cout << "____" << endl;
+        // cur->printLink();
+    }
+
 }
 
 void BMatchSolver::genFuncSupport(ifstream& in) {
@@ -394,6 +441,7 @@ void BMatchSolver::outputPreprocess(ifstream& in1, ifstream& in2) {
             }
         }
     //*/
+    outMgr.init(f, g);
     cerr << "outputPreprocess end" << endl;
 }
 
@@ -401,6 +449,20 @@ void BMatchSolver::run(ostream& out) {
     int prevTime = 0;
     cerr << "start run..." << endl;
     scoreGte((2));
+    // for heuristic
+    bool toStep = true;
+    Order* cur = outMgr.getHead();
+
+    // cout << "c_matrix" << endl;
+    // for (auto cv: c) {
+    //     for (auto v: cv) cout << v.matrixVar << " ";
+    //     cout << endl;
+    // }
+    // cout << "d_matrix" << endl;
+    // for (auto cv: d) {
+    //     for (auto v: cv) cout << v.matrixVar << " ";
+    //     cout << endl;
+    // }
     while (1) {
         int execTime = (clock() - START) / CLOCKS_PER_SEC;
         if (execTime - prevTime >= 10) {
@@ -418,22 +480,119 @@ void BMatchSolver::run(ostream& out) {
                  << bestScore << endl;
             break;
         }
-        vector<Var> outputPairs;
-        if (!outputSolve(outputPairs)) {
+
+        // origin, found by output SAT
+        // vector<Var> outputPairs;
+        // if (!outputSolve(outputPairs)) {
+        //     cout << "No output pairs found!" << endl;
+        //     break;
+        // }
+        // cout << "r0" << endl;
+        vector<Order*> outputPairs;
+        if (toStep) {
+            cur = outMgr.step();
+            if (cur!= 0 && outMgr.isBacktrack()) cur = outMgr.step();
+            assert(!outMgr.isBacktrack());
+        } 
+        else {
+            cur = outMgr.backTrack();
+            if (cur != 0) cur = outMgr.step();
+            assert(!outMgr.isBacktrack());
+        }
+        if (cur == 0) {
             cout << "No output pairs found!" << endl;
             break;
         }
-        set<Var> currentResult;
-        for (int k = 0; k < outputPairs.size(); ++k) {
-            currentResult.insert(outputPairs[k]);
-            // cout << "Solving isValidMo..." << endl;
-            // bool result = isValidMo(currentResult);
-            // if (!result) {
-            //     // TODO: block currentResult
-            //     currentResult.erase(outputPairs[k]);
+        outputPairs = outMgr.getAllAssign();
+        outMgr.printAssign();
+        // for (auto assign: outputPairs) {
+        //     assign->printMapping();
+        // }
+        // cout << "__________" << endl;
+        // cout << "r1" << endl;
+        vector<vector<bool> > negation(1, vector<bool> ());
+        for (size_t i = 0; i < outputPairs.size(); ++i) {
+            if (outputPairs[i]->isPos() && outputPairs[i]->isNeg()) {
+                size_t num = negation.size();
+                // negation.insert(negation.end(), negation.begin(), negation.end());
+                for (size_t j = 0; j < num; ++j) negation.push_back(negation[j]);
+                for (size_t j = 0; j < num; ++j) negation[j].push_back(false);
+                for (size_t j = num; j < negation.size(); ++j) negation[j].push_back(true);
+            } 
+            else if (outputPairs[i]->isPos()) for (size_t j = 0; j < negation.size(); ++j) negation[j].push_back(false);
+            else if (outputPairs[i]->isNeg()) for (size_t j = 0; j < negation.size(); ++j) negation[j].push_back(true);
+            else assert(0);
+
+            // for (auto vec: negation) {
+            //     for (auto n: vec) cout << n << " ";
+            //     cout << endl;
             // }
+            if (negation.size() > 50) negation.resize(50);
         }
-        isValidMo(currentResult);
+        // cout << "r2" << endl;
+
+        // for (auto vec: negation) {
+        //     for (auto n: vec) cout << n << " ";
+        //     cout << endl;
+        // }
+        // cout << "\\|/" << endl;
+        
+        size_t validSolNum = 0;
+        for (size_t i = 0; i < negation.size(); ++i) {
+            set<Var> currentResult;
+            assert(outputPairs.size() == negation[i].size());
+            for (size_t k = 0; k < outputPairs.size(); ++k) {
+                size_t fid = outputPairs[k]->getFid();
+                size_t gid = outputPairs[k]->getGid();
+                cout << fid << " " << gid << endl;
+                if (negation[i][k] == 1) currentResult.insert(d[gid][fid].matrixVar);
+                else currentResult.insert(c[gid][fid].matrixVar);
+            }
+            // for (auto v: currentResult) cout << v << " ";
+            // cout << endl;
+            if (isValidMo(currentResult)) {
+                negation[validSolNum] = negation[i];
+                ++validSolNum;
+            }
+            // for (auto vec: negation) {
+            //     for (auto n: vec) cout << n << " ";
+            //     cout << endl;
+            // }
+            // cout << "\\|/" << endl;
+        }
+        // cout << "r3" << endl;
+        negation.resize(validSolNum);
+        bool canPos = false;
+        bool canNeg = false;
+        size_t end = outputPairs.size() - 1;
+        for (size_t i = 0; i < negation.size(); ++i) {
+            if (negation[i][end] == true) canNeg = true;
+            if (negation[i][end] == false) canPos = true;
+            if (canPos && canNeg) break;
+        }
+        assert(canPos || canNeg || negation.size == 0);
+        if (!canPos) outputPairs[end]->failPos();
+        if (!canNeg) outputPairs[end]->failNeg();
+        
+        toStep = negation.size() != 0;
+        cout << "r4" << endl;
+
+
+
+
+        // origin output SAT
+        // set<Var> currentResult;
+        // for (int k = 0; k < outputPairs.size(); ++k) {
+        //     // origin : output SAT
+        //     currentResult.insert(outputPairs[k]); 
+        //     // cout << "Solving isValidMo..." << endl;
+        //     // bool result = isValidMo(currentResult);
+        //     // if (!result) {
+        //     //     // TODO: block currentResult
+        //     //     currentResult.erase(outputPairs[k]);
+        //     // }
+        // }
+        // isValidMo(currentResult);
     }
     outputAns(out);
 }

@@ -551,6 +551,8 @@ int main(int argc, char* argv[]) {
     // return 0;
     bmatchSolver.run(out);
 
+    // bmatchSolver.testOutputMgr();
+
     remove("circuit_1.aag");
     remove("circuit_2.aag");
     remove("name");
