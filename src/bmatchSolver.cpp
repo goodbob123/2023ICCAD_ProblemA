@@ -463,10 +463,11 @@ void BMatchSolver::run(ostream& out) {
     //     for (auto v: cv) cout << v.matrixVar << " ";
     //     cout << endl;
     // }
+    scoreGte((g.size() + f.size()));
     while (1) {
         int execTime = (clock() - START) / CLOCKS_PER_SEC;
         if (execTime - prevTime >= 10) {
-            if(execTime >= 3500){
+            if(execTime >= 3600){
                 cout<<"time limit reach\n";
                 cout<<bestScore<<endl;
                 return ;
@@ -553,6 +554,7 @@ void BMatchSolver::run(ostream& out) {
             if (isValidMo(currentResult)) {
                 negation[validSolNum] = negation[i];
                 ++validSolNum;
+                outputAns(out);
             }
             // for (auto vec: negation) {
             //     for (auto n: vec) cout << n << " ";
@@ -594,7 +596,6 @@ void BMatchSolver::run(ostream& out) {
         // }
         // isValidMo(currentResult);
     }
-    outputAns(out);
 }
 
 void BMatchSolver::outputAns(ostream& out) {
