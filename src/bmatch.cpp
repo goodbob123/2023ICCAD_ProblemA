@@ -532,15 +532,12 @@ int main(int argc, char* argv[]) {
     mapping("2.aag", out_file);
     out_file.close();
 
-    remove("1.aag");
-    remove("2.aag");
-
     // satTest
     BMatchSolver bmatchSolver;
 
     ifstream portMapping("name");
-    ifstream aag1("circuit_1.aag");
-    ifstream aag2("circuit_2.aag");
+    ifstream aag1("1.aag");
+    ifstream aag2("2.aag");
     ifstream support("support");
     ofstream out(match);
 
@@ -553,6 +550,10 @@ int main(int argc, char* argv[]) {
 
     // bmatchSolver.testOutputMgr();
 
+
+
+    remove("1.aag");
+    remove("2.aag");
     remove("circuit_1.aag");
     remove("circuit_2.aag");
     remove("name");

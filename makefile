@@ -5,7 +5,7 @@ LDFLAGS := -lm -ldl -lreadline -lpthread
 
 TARGET := bmatch
 SRCS := ./src/bmatch.cpp ./src/aigtoaig.c ./src/aiger.c ./src/SAT/test/File.cpp ./src/SAT/test/Proof.cpp ./src/SAT/test/Solver.cpp ./src/bmatchSolver.cpp \
-  ./src/cir/cirFraig.cpp ./src/cir/cirGate.cpp ./src/cir/cirMgr.cpp ./src/cir/cirSim.cpp
+  ./src/cir/cirFraig.cpp ./src/cir/cirGate.cpp ./src/cir/cirMgr.cpp ./src/cir/cirSim.cpp ./src/cir/cirOpt.cpp
   
 OBJS := $(SRCS:.cpp=.o)
 OBJS := $(OBJS:.c=.o)
@@ -50,6 +50,9 @@ $(TARGET): $(OBJS) ./lib/libabc.a
 ./src/cir/cirSim.o: ./src/cir/cirSim.cpp
 	$(PP) $(CFLAGS) -std=c++11 -c ./src/cir/cirSim.cpp -o ./src/cir/cirSim.o
 
+
+./src/cir/cirOpt.o: ./src/cir/cirOpt.cpp
+	$(PP) $(CFLAGS) -std=c++11 -c ./src/cir/cirOpt.cpp -o ./src/cir/cirOpt.o
 
 clean:
 	rm -rf $(OBJS) $(TARGET)

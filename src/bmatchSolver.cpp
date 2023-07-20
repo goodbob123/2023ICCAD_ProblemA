@@ -220,11 +220,11 @@ void BMatchSolver::createEqualRelationByOneOutput(const int index_f,
     for (size_t i = 0; i < group_g.size(); ++i) {
         index_g = id2j[group_g[i].first->getId()];
         isNagative_g = group_g[i].second;
-        
-        if(isNagative_g)
-            cout<<"mapping: !"<< index_f << "& "<< index_g<<endl;
-        else
-            cout<<"mapping: " << index_f << "& "<< index_g <<endl;
+
+        // if(isNagative_g)
+        //     cout<<"mapping: !"<< index_f << "& "<< index_g<<endl;
+        // else
+        //     cout<<"mapping: " << index_f << "& "<< index_g <<endl;
         pos = isNagative_g ? d[index_g][index_f].matrixVar : c[index_g][index_f].matrixVar;
         neg = isNagative_g ? c[index_g][index_f].matrixVar : d[index_g][index_f].matrixVar;
         mappingVar_pos.push_back(pos);
@@ -271,12 +271,12 @@ void BMatchSolver::createEqualRelationByGroup(const vector<pair<CirGate*, bool>>
         index_g = id2j[group_g[i].first->getId()];
         isNagative_f = i < group_f.size() ? group_f[i].second : group_f.back().second;
         isNagative_g = group_g[i].second;
-        if(isNagative_f)
-            cout<<"mapping: !"<< index_f <<" & "<< index_g<<endl;
-        else if (isNagative_g)
-            cout<<"mapping: "<< index_f <<" & !"<< index_g<<endl;
-        else
-            cout<<"mapping: " << index_f << " & "<< index_g <<endl;
+        // if(isNagative_f)
+        //     cout<<"mapping: !"<< index_f <<" & "<< index_g<<endl;
+        // else if (isNagative_g)
+        //     cout<<"mapping: "<< index_f <<" & !"<< index_g<<endl;
+        // else
+        //     cout<<"mapping: " << index_f << " & "<< index_g <<endl;
         pos = isNagative_f == isNagative_g ? c[index_g][index_f].matrixVar : d[index_g][index_f].matrixVar;
         neg = isNagative_f != isNagative_g ? c[index_g][index_f].matrixVar : d[index_g][index_f].matrixVar;
         mappingVar_pos.push_back(pos);
@@ -319,6 +319,10 @@ void BMatchSolver::addEqualConstraint(ifstream& in1, ifstream& in2) {
     cout<< "start to add equal constraint ..."<<endl;
     c1->readCircuit(in1);
     c2->readCircuit(in2);
+    cout << "c1:" << endl;
+    c1->showCoverage();
+    cout << "c2:" << endl;
+    c2->showCoverage();
     c1->randomSim();
     c2->randomSim();
     vector<vector<pair<CirGate*, bool>>> equalGroup_1, equalGroup_2;
@@ -337,8 +341,8 @@ void BMatchSolver::addEqualConstraint(ifstream& in1, ifstream& in2) {
         for (size_t index_2 = index_1; index_2 < equalGroup_2.size(); ++index_2) {
             // valid mapping relation should #n of f <= #n of g
             if (equalGroup_1[index_1].size() <= equalGroup_2[index_2].size()) {
-                cout << "start to map group...index: (f,g): " << index_1 << " , " << index_2 << endl;
-                cout << "size of f: " << equalGroup_1[index_1].size() << " size of g: " << equalGroup_2[index_2].size() << endl;
+                // cout << "start to map group...index: (f,g): " << index_1 << " , " << index_2 << endl;
+                // cout << "size of f: " << equalGroup_1[index_1].size() << " size of g: " << equalGroup_2[index_2].size() << endl;
                 createEqualRelationByGroup(equalGroup_1[index_1],
                                            equalGroup_2[index_2]);
             }
@@ -368,8 +372,8 @@ void BMatchSolver::addEqualConstraint(ifstream& in1, ifstream& in2) {
 
     // lonely_f
     for (size_t index_1 = 0; index_1 < lonely_f.size(); ++index_1) {
-        for (size_t index_2 = index_1 + 1; index_2 < equalGroup_2.size(); ++index_2) {
-                createEqualRelationByOneOutput(lonely_f[index_1],
+        for (size_t index_2 = index_1; index_2 < equalGroup_2.size(); ++index_2) {
+            createEqualRelationByOneOutput(lonely_f[index_1],
                                            equalGroup_2[index_2]);
         }
     }

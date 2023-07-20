@@ -77,6 +77,11 @@ class CirMgr {
     void DFS(CirGate *);
     string getIOName(const CirGate *) const;
 
+    //  Member function about coverage
+    void showCoverage();
+    void coverage(CirGate *g);
+    void coverageHelper(CirGate *g, int &count, int &support);
+
     // update Function
     void updateFanout();
     void updateUnusedForPI();

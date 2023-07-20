@@ -351,6 +351,16 @@ bool CirMgr::readCircuit(ifstream& fin) {
         CirGate* curr = POs[i];
         DFS(curr);
     }
+    cout << "check floating output..." << endl;
+    // for finding floating output
+    for (size_t i = 0; i < POs.size(); ++i) {
+        if (find(FloatGates.begin(), FloatGates.end(), all[POs[i]->fanin0id]) != FloatGates.end()) {
+            cout << "PO [" << i << "] is floating" << endl;
+            if (getIOName(POs[i]) != "")
+                cout << "    name:" << getIOName(POs[i]) << endl;
+        }
+    }
+    cout << "end check floating output..." << endl;
 
     return true;
 }
@@ -535,6 +545,42 @@ void CirMgr::DFS(CirGate* g) {
         }
         trace.push_back(g->id);
     }
+}
+
+void CirMgr::coverageHelper(CirGate* g, int& count, int& support) {
+    if (find(trace.begin(), trace.end(), g->id) == trace.end()) {
+        if (g->fanin0id != -1) {
+            if (all[g->fanin0id] != 0) coverageHelper(all[g->fanin0id], count, support);
+        }
+        if (g->fanin1id != -1) {
+            if (all[g->fanin1id] != 0) coverageHelper(all[g->fanin1id], count, support);
+        }
+        trace.push_back(g->id);
+        if (g->type == PI_GATE) ++support;
+        ++count;
+    }
+}
+
+void CirMgr::coverage(CirGate* g) {
+    trace.clear();
+    int count = 0, support = 0;
+    coverageHelper(g, count, support);
+    cout << setw(4) << g->getId();
+    if (getIOName(g) != "") {
+        cout << setw(6) << "(" << getIOName(g) << ")";
+    }
+    cout << " coverage : " << setw(4) << count << ", support: " << setw(4) << support << endl;
+}
+
+void CirMgr::showCoverage() {
+    // optimize();
+    // sweep();
+    // strash();
+    cout << "========= Coverage ========" << endl;
+    for (size_t i = 0; i < POs.size(); ++i) {
+        coverage(POs[i]);
+    }
+    cout << "===========================" << endl;
 }
 
 void CirMgr::updateFanout() {
