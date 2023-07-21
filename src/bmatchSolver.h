@@ -61,12 +61,12 @@ struct PortHashFunc {
 };
 
 class Order
-{
+{   // Order would record the information about the assignment of f->g and the assignment chain
     public:
         Order() {
             is_head = true;
         }
-        Order( Port* _gport_ptr, size_t _gport_id, Port* _fport_ptr, size_t _fport_id) {
+        Order(Port* _gport_ptr, size_t _gport_id, Port* _fport_ptr, size_t _fport_id) {
             is_head = false;
             fport_ptr = _fport_ptr;
             fport_id = _fport_id;
@@ -74,7 +74,9 @@ class Order
             gport_id = _gport_id;
             is_assign = false;
             en = false;   // should only changed in OutPortMgr::genHeuristicOrder
-            forbid_reason = 0;
+            is_forbid = true;
+            forbid_order = vector<Order*> ();
+            // forbid_reason = 0;
             order_nxt = 0;  // should only changed in OutPortMgr::genHeuristicOrder
             assign_nxt = 0;
             assign_pre = 0;
@@ -82,10 +84,15 @@ class Order
         bool isHead() const {
             return is_head;
         }
-        bool isForbid() const { 
-            if (!en) return true;
-            else if (forbid_reason == 0) return false;
-            else return forbid_reason->is_assign;
+        bool isForbid() const {
+            if (!en) assert(is_forbid);
+            return is_forbid;
+            // if (!en) return true;
+            // else if (forbid_reason == 0) return false;
+            // else {
+            //     assert(forbid_reason->is_assign);
+            //     return true;
+            // }
         }
         bool isNeg() const { return is_neg; }
         bool isPos() const { return is_pos; }
@@ -95,14 +102,38 @@ class Order
         Port* getFptr() const { return fport_ptr; }
         Port* getGptr() const { return gport_ptr; }
         Order* getAssignNxt() const { return assign_nxt; }
-        void updateForbidReason(Order* new_reason) {
-            // if new reason found && !isForbid(), update forbid_reason
-            if (!isForbid()) forbid_reason = new_reason;
+        
+        // void updateForbidReason(Order* new_reason) {
+        //     // if new reason found && !isForbid(), update forbid_reason
+        //     if (!isForbid()) forbid_reason = new_reason;
+        // }
+        void updateForbidOrder(Order* _forbid_order) {
+            // if _forbid_order was able to be assigned
+            // make _forbid_order unable to assign
+            // and record in the vector forbid_order
+            if (_forbid_order == 0) {
+                // _forbid_order == 0 iff we want to unsign *this (i.e. backToPre)
+                // we make forbid assignments able to assign again,
+                // and clear forbid_order
+                assert(is_assign == false);
+                for (size_t i = 0; i < forbid_order.size(); ++i) {
+                    forbid_order[i]->is_forbid = false;
+                }
+                forbid_order.clear();
+            } else {
+                if (!_forbid_order->is_forbid) {
+                    _forbid_order->is_forbid = true;
+                    forbid_order.push_back(_forbid_order);
+                }
+            }
         }
 
         void assign(Order* pre) {
+            // neccesary change for assignment
+            // pre record the parent in assignment chain
+            assert(!is_forbid);
             assign_pre = pre;
-            assign_nxt = order_nxt;
+            assign_nxt = order_nxt; // new assignment, start from order_nxt
             is_assign = true;
             is_neg = true;
             is_pos = true;
@@ -113,46 +144,52 @@ class Order
         void failPos() {
             is_pos = false;
         }
-        Order* backToPre() {    // return 0 if no Pre
+        Order* backToPre() {    
+            // one step of backtrack
+            // return 0 if no Pre
             Order* pre = assign_pre;
             if (pre != 0) {
                 assert(assign_pre.en);
                 pre->assign_nxt = order_nxt;
             }
 
+            // unassign
             is_assign = false;
             assign_nxt = 0;
             assign_pre = 0;
             is_neg = true;
             is_pos = true;
+            updateForbidOrder(0);   // clear forbid_order
 
             return pre;
         }
-        Order* backTrack() {    // return 0 if no pre
+        Order* backTrack() {
+            // backTrack to get ready for next assignment
             Order* pre = backToPre();
             if (pre == 0) return 0;
             while (pre->assign_nxt == 0 || pre->assign_nxt->isForbid() || pre->assign_nxt->isAssign()) {
-                // pre->assign_nxt = pre->assign_nxt->order_nxt;
-                if (pre->assign_nxt == 0) pre = pre->backToPre();
-                else pre->assign_nxt = pre->assign_nxt->order_nxt;
-                if (pre == 0) return 0;
+                if (pre->assign_nxt == 0) pre = pre->backToPre(); // no new assignment, need further backtrack
+                else pre->assign_nxt = pre->assign_nxt->order_nxt; // next Order in chain is not available
+                if (pre == 0) return 0; // return 0 if no pre
             }
             return pre;
         }
         Order* step() {
-            // Order* nxt = assign_nxt;
-            // Order* pre;
+            // get next assignments
+            // if backTrack happen, then only do backTrack 
+            // and return the node we backTrack to. need to step again to get next assignments
             while (assign_nxt == 0 || assign_nxt->isForbid()) {
                 if (assign_nxt == 0) {
                     Order* pre = backTrack();  // pre->assign_nxt != 0, go to else
                     if (pre == 0) return 0;
                     else return pre;
-                } else { // assign_nxt->isForbid()
+                } else { // i.e. assign_nxt->isForbid(), thus we should go to next Order in chain
                     assert(!assign_nxt->is_assign());
                     assert(assign_nxt->en);
                     assign_nxt = assign_nxt->order_nxt;
                 }
             }
+            // i.e. assign_nxt is new assignment
             assert(!assign_nxt->is_assign());
             assert(assign_nxt->en);
             assign_nxt->assign(this);
@@ -174,32 +211,37 @@ class Order
             if (order_nxt == 0) cout << "0" << endl;
             else order_nxt->printMapping();
         }
-        void enable(Order* _order_nxt) { 
+        void enable(Order* _order_nxt) {
+            // make the Order able to assign and unsign
+            // _order_nxt record next Order in chain
             en = true;
+            is_forbid = false;
             id = en_count;
             order_nxt = _order_nxt;
             ++en_count;
         }
         bool isAssign() { return is_assign; }
     private:
-        bool is_head;
+        bool is_head;   // head is a pseudo node used as head of the Order chain
 
-        Port* fport_ptr;
-        size_t fport_id;
+        Port* fport_ptr; // correspond Port in f
+        size_t fport_id; // correspond index of port in f
         Port* gport_ptr;
         size_t gport_id;
-        bool is_assign;
-        bool is_pos;
-        bool is_neg;
-        Order* forbid_reason;
+        bool is_assign; // is fport->gport matching assigned
+        bool is_pos;    // whether positive match is possible
+        bool is_neg;    // whether negation match is possible
+        bool is_forbid; // is such assignment possible
+        // Order* forbid_reason;
+        vector<Order*> forbid_order; // if assign, the assignment disabled by implication 
 
-        bool en;  // be const
-        static size_t en_count;
-        size_t id;
+        bool en;  // is the Order able to assign and unsign
+        static size_t en_count; // num of enable Orders
+        size_t id; // the index in the Order chain
 
-        Order* order_nxt;   // be const
-        Order* assign_nxt;
-        Order* assign_pre;
+        Order* order_nxt;  // next Order in possible assignment chain
+        Order* assign_nxt; // next Order in assignment chain
+        Order* assign_pre; // pre Order in assignment chain
 
 };
 // class BusInfo
@@ -214,7 +256,9 @@ class Order
 //         bool isFull() { return (remain_bus == 0); }
 // };
 // from big to small
-class Comparator {
+class Comparator {  
+    // cmp num Support
+    // since used in OutPortMgr, Port is stored as second of pair
     public:
         bool operator() (pair<size_t, Port>& a, pair<size_t, Port>& b) {
             return a.second.nofSupport() > b.second.nofSupport();
@@ -245,32 +289,35 @@ class OutPortMgr
                 order_map.push_back(buffer);
             }
             // cout << "Mgr1" << endl;
-            genHeuristicOrder();
+            genHeuristicOrder();    // i.e. gen possible order chain
             // cout << "Mgr0" << endl;
             genBusInfo();
         }
         Order* step() {
-            size_t pre_id = assign_current->getId();
-            assign_current = assign_current->step();
-            // cout << "!" << endl;
-            size_t now_id = assign_current != 0 ? assign_current->getId() : 0;
+            size_t pre_id = assign_current->getId();    // id is index in possible assignment chain
+            assign_current = assign_current->step();    // get next assignment (if backTrack, only do backTrack)
+            // cout << "step1" << endl;
+            size_t now_id = assign_current != 0 ? assign_current->getId() : 0; // assign_current == 0 iff no next assignment
             is_backtrack = pre_id > now_id;
-            if (!is_backtrack) {
+            if (!is_backtrack) { // not backtrack means the assign_current is new assignment's end
+                // forbid some assignments according to rules
                 assert(now_id != 0);
-                noRemapRule();
+                // cout << "step2" << endl;
+                noRemapRule(); 
             }
             return assign_current;
         }
         Order* backTrack() {
+            // backtrack
             is_backtrack = true;
             assign_current = assign_current->backTrack();
             return assign_current;
-            // todo
         }
         Order* getHead() { return assign_head; }
         Order* getAssign() { return assign_current; }
         bool isBacktrack() { return is_backtrack; }
         vector<Order*> getAllAssign() const {
+            // return Orders in current assignments
             vector<Order*> assignment;
             Order* cur = assign_head;
             while (cur != assign_current) {
@@ -296,17 +343,17 @@ class OutPortMgr
         }
 
     private:
-        bool is_one_to_one;
-        vector<Port>* fptr;
-        vector<Port>* gptr;
+        bool is_one_to_one; // do we assume output is one to one
+        vector<Port>* fptr; // copy of f
+        vector<Port>* gptr; // copy of g
 
         // vector<BusInfo> fbus;
         // vector<BusInfo> gbus;
 
-        vector<vector<Order> > order_map;
-        Order* assign_head;
-        Order* assign_current;
-        bool is_backtrack;
+        vector<vector<Order> > order_map; // matrix of Order, same as format of c, d in bmatch
+        Order* assign_head; // pseudo head of chain of possible assignment
+        Order* assign_current;  // current end of assignment
+        bool is_backtrack;  // whether previous step is backtracking
 
         void genHeuristicOrder() {
 
@@ -319,6 +366,7 @@ class OutPortMgr
                 g_sort.push_back(pair<size_t, Port> (i, gptr->at(i)));
             }
             
+            // sort the f, g by support
             sort(f_sort.begin(), f_sort.end(), Comparator());
             sort(g_sort.begin(), g_sort.end(), Comparator());
 
@@ -331,32 +379,36 @@ class OutPortMgr
             //     cout << g.second.nofSupport() << endl;
             // }
             // cout << "gen4" << endl;
-            vector<vector<Order*> > order_sort;
+
+            vector<vector<Order*> > order_sort; // group of valid assignment
             if (is_one_to_one) {
                 assert(f_sort[0].second.nofSupport() < g_sort[0].second.nofSupport());
-                size_t cut = 0;
+                size_t cut = 0; // cut is the end of previous group
                 for (size_t i = 1; i < f_sort.size(); ++i) {
                     assert(f_sort[i].second.nofSupport() < g_sort[i].second.nofSupport());    // if fail, means not one to one
                     // cout << "gen3 " << i << endl;
                     if (f_sort[i - 1].second.nofSupport() > g_sort[i].second.nofSupport()) {
+                        // group found, between [cut, i)
                         for (size_t i_g = cut; i_g < i; ++i_g) {
                             for (size_t i_f = cut; i_f < i; ++i_f) {
                                 pair<size_t, Port> fp = f_sort[i_f];
                                 pair<size_t, Port> gp = g_sort[i_g];
-                                groupMapping(fp, gp, order_sort);
+                                groupMapping(fp, gp, order_sort); // find the group, add in group set
                             }
                         }
-                        cut = i;
+                        cut = i; // update cut
                     }
                 }
                 // cout << "gen2" << endl;
                 // cout << cut << endl;
                 assert(f_sort[f_sort.size()].second.nofSupport() < g_sort[f_sort.size()].second.nofSupport());
+
+                // final group should added
                 for (size_t i_g = cut; i_g < g_sort.size(); ++i_g) {
                     for (size_t i_f = cut; i_f < f_sort.size(); ++i_f) {
                         pair<size_t, Port> fp = f_sort[i_f];
                         pair<size_t, Port> gp = g_sort[i_g];
-                        groupMapping(fp, gp, order_sort);
+                        groupMapping(fp, gp, order_sort); // find the group, add in group set
                     }
                 }
                 // cout << "__grp__" << endl;
@@ -369,11 +421,18 @@ class OutPortMgr
 
             } else {
                 cerr << "not done yet" << endl;
-                assert(false);
+                for (size_t i_g = 0; i_g < g_sort.size(); ++i_g) {
+                    for (size_t i_f = cut; i_f < f_sort.size(); ++i_f) {
+                        pair<size_t, Port> fp = f_sort[i_f];
+                        pair<size_t, Port> gp = g_sort[i_g];
+                        groupMapping(fp, gp, order_sort);
+                    }
+                }
             }
+
             // cout << "gen1" << endl;
 
-            // assign_head = new Order();
+            // make the order chain
             Order* pre = 0;
             Order* nxt = assign_head;
             for (size_t i = 0; i < order_sort.size(); ++i) {
@@ -386,26 +445,27 @@ class OutPortMgr
                     if (pre != 0) pre->enable(nxt);
                 }
             }
-            assign_head->assign(0);
-            nxt->enable(0); //tail
-            // cout << "gen0" << endl;
+            assign_head->assign(0); // pre of head make it 0
+            nxt->enable(0); // nxt of tail make it 0
 
         }
         void groupMapping(pair<size_t, Port>& fp, pair<size_t, Port>& gp, vector<vector<Order*> >& order_sort) {
             // Order* buf_order_ptr = &order_map[fp.first][gp.first];
             Order* buf_order_ptr = &order_map[gp.first][fp.first];
-            if (gp.second.nofSupport() < fp.second.nofSupport()) return;
-            size_t group = gp.second.nofSupport() - fp.second.nofSupport();
+            if (gp.second.nofSupport() < fp.second.nofSupport()) return;    // support should be bigger
+            size_t group = gp.second.nofSupport() - fp.second.nofSupport(); // if support is near, make it priority
             // cout << group << endl;
             group *= 2;
             // if (gp.second.getBusSize() != fp.second.getBusSize()) ++group;
-            while (order_sort.size() <= group) order_sort.push_back(vector<Order*> ());
+            while (order_sort.size() <= group) order_sort.push_back(vector<Order*> ()); // add group size till enough
             order_sort[group].push_back(buf_order_ptr);
         }
         void genBusInfo() {
             // todo
         }
         void noRemapRule() {
+            // cout << assign_current << endl;
+            // assign_current->printMapping();
             size_t gid = assign_current->getGid();
             size_t fid = assign_current->getFid();
 
@@ -413,7 +473,9 @@ class OutPortMgr
             for (size_t i = 0; i < fptr->size(); ++i) {
                 if (i == fid) continue;
                 else {
-                    order_map[gid][i].updateForbidReason(assign_current);
+                    assert(&(order_map[gid][i]) != 0);
+                    assign_current->updateForbidOrder(&(order_map[gid][i]));
+                    // order_map[gid][i].updateForbidReason(assign_current);
                 }
             }
             if (is_one_to_one) {
@@ -421,7 +483,9 @@ class OutPortMgr
                 for (size_t i = 0; i < gptr->size(); ++i) {
                     if (i == gid) continue;
                     else {
-                        order_map[i][fid].updateForbidReason(assign_current);
+                        assert(&(order_map[i][fid]) != 0);
+                        assign_current->updateForbidOrder(&(order_map[i][fid]));
+                        // order_map[i][fid].updateForbidReason(assign_current);
                     }
                 }
             }

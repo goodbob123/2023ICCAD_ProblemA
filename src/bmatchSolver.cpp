@@ -509,7 +509,7 @@ void BMatchSolver::run(ostream& out) {
             break;
         }
         outputPairs = outMgr.getAllAssign();
-        outMgr.printAssign();
+        // outMgr.printAssign();
         // for (auto assign: outputPairs) {
         //     assign->printMapping();
         // }
@@ -549,7 +549,7 @@ void BMatchSolver::run(ostream& out) {
             for (size_t k = 0; k < outputPairs.size(); ++k) {
                 size_t fid = outputPairs[k]->getFid();
                 size_t gid = outputPairs[k]->getGid();
-                cout << fid << " " << gid << endl;
+                // cout << fid << " " << gid << endl;
                 if (negation[i][k] == 1) currentResult.insert(d[gid][fid].matrixVar);
                 else currentResult.insert(c[gid][fid].matrixVar);
             }
@@ -581,7 +581,7 @@ void BMatchSolver::run(ostream& out) {
         if (!canNeg) outputPairs[end]->failNeg();
         
         toStep = negation.size() != 0;
-        cout << "r4" << endl;
+        // cout << "r4" << endl;
 
 
 
