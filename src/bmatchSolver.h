@@ -422,7 +422,7 @@ class OutPortMgr
             } else {
                 cerr << "not done yet" << endl;
                 for (size_t i_g = 0; i_g < g_sort.size(); ++i_g) {
-                    for (size_t i_f = cut; i_f < f_sort.size(); ++i_f) {
+                    for (size_t i_f = 0; i_f < f_sort.size(); ++i_f) {
                         pair<size_t, Port> fp = f_sort[i_f];
                         pair<size_t, Port> gp = g_sort[i_g];
                         groupMapping(fp, gp, order_sort);
