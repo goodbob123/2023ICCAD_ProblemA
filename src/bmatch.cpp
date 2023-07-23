@@ -539,13 +539,32 @@ int main(int argc, char* argv[]) {
     ifstream aag1("1.aag");
     ifstream aag2("2.aag");
     ifstream support("support");
+<<<<<<< HEAD
+=======
+    ifstream bus(input);
+    ofstream out(match);
+>>>>>>> 03a84e3 (add bus constraints, input preprocess, and block input from output matrix)
 
     bmatchSolver.init(portMapping, aag1, aag2);
     bmatchSolver.genFuncSupport(support);
     bmatchSolver.inputPreprocess();
     bmatchSolver.outputPreprocess(aag1, aag2);
+<<<<<<< HEAD
     // return 0;
     bmatchSolver.run(match);
+=======
+    bmatchSolver.readBusInfo(bus, true);
+    bmatchSolver.readBusInfo(bus, false);
+    bmatchSolver.printInfo();
+
+    int temp;
+    cerr << "Enter 1 for bus constraint: ";
+    cin >> temp;
+    if (temp == 1)
+        bmatchSolver.busConstraint();
+        
+    bmatchSolver.run(out);
+>>>>>>> 03a84e3 (add bus constraints, input preprocess, and block input from output matrix)
 
     // bmatchSolver.testOutputMgr();
 

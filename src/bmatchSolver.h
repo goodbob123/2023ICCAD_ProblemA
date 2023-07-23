@@ -14,6 +14,7 @@ using namespace std;
 
 class Port {
     friend struct PortHashKey;
+    friend class BMatchSolver;
 
    public:
     Port(const string& _name, const Var& _var) {
@@ -498,16 +499,29 @@ struct mtx2Mit {
     Var miterVar;
 };
 
+
+typedef vector<set<int>> Buses;
+
 class BMatchSolver {
    public:
     BMatchSolver(){};
     ~BMatchSolver(){};
     void init(ifstream& portMapping, ifstream& aag1, ifstream& aag2);
     void genFuncSupport(ifstream& in);
+    void readBusInfo(ifstream &in, bool isCircuit1);
     void inputPreprocess();
     void outputPreprocess(ifstream& in1, ifstream& in2);
+<<<<<<< HEAD
     void run(char* match);
     void outputAns(char* match);
+=======
+    void run(ostream& out);
+    void outputAns(ostream& out);
+    void printInfo() const;
+    void printBus(const Buses& bus) const;
+    void printSupport(const vector<Port>& portTarget, const vector<Port>& portInv) const;
+    void busConstraint();
+>>>>>>> 03a84e3 (add bus constraints, input preprocess, and block input from output matrix)
     void testOutputMgr();
 
    protected:
@@ -530,6 +544,11 @@ class BMatchSolver {
     void createEqualRelationByOneOutput(const int index_f,
                 const vector<pair<CirGate*, bool>>& group_g);
 
+    int getPortIndex(const vector<Port> &ports, const string &portName) const;
+    void twoWaySupport(const set<int>& oneIndice, const set<int>& twoIndice);
+    void assumeMo();
+    void connectBus(Var connectVar, const set<int>& bus1, const set<int>& bus2);
+    void assumeInputRedundnatFromOutput(const set<int>& input1, const set<int>& input2);
 
     // SAT Solver
     SatSolver matrixSolver, miterSolver;
@@ -558,6 +577,16 @@ class BMatchSolver {
     double START;
     unordered_map<int, Var> AAG2VarHashmap;
 
-    // vector<set<int>> fSupport;
-    // vector<set<int>> gSupport;
+    // Bus
+    Buses xBus;
+    Buses fBus;
+    Buses yBus;
+    Buses gBus;
+
+    // Var matching matrix
+    vector<vector<Var>> outputVarMatrix;
+    // vector<vector<Var>> inputVarMatrix;
+
+    vector<vector<Var>> inputBusMatrix;
+
 };
