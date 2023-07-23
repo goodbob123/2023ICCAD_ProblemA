@@ -23,6 +23,7 @@ class Port {
     ~Port() {}
     string getName() const { return name; }
     Var getVar() const { return var; }
+    set<int> getSupport() const { return supports; }
 
     void addSupport(int index) { supports.insert(index); }
     size_t nofSupport() const { return supports.size(); }
@@ -261,7 +262,7 @@ class Comparator {
     // since used in OutPortMgr, Port is stored as second of pair
     public:
         bool operator() (pair<size_t, Port>& a, pair<size_t, Port>& b) {
-            return a.second.nofSupport() > b.second.nofSupport();
+            return a.second.nofSupport() < b.second.nofSupport();
         }
 };
 
@@ -501,12 +502,12 @@ class BMatchSolver {
    public:
     BMatchSolver(){};
     ~BMatchSolver(){};
-    void init(ifstream& portMapping, ifstream& aag1, ifstream& aag2, ostream& out);
+    void init(ifstream& portMapping, ifstream& aag1, ifstream& aag2);
     void genFuncSupport(ifstream& in);
     void inputPreprocess();
     void outputPreprocess(ifstream& in1, ifstream& in2);
-    void run(ostream& out);
-    void outputAns(ostream& out);
+    void run(char* match);
+    void outputAns(char* match);
     void testOutputMgr();
 
    protected:

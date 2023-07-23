@@ -539,14 +539,13 @@ int main(int argc, char* argv[]) {
     ifstream aag1("1.aag");
     ifstream aag2("2.aag");
     ifstream support("support");
-    ofstream out(match);
 
-    bmatchSolver.init(portMapping, aag1, aag2, out);
+    bmatchSolver.init(portMapping, aag1, aag2);
     bmatchSolver.genFuncSupport(support);
     bmatchSolver.inputPreprocess();
     bmatchSolver.outputPreprocess(aag1, aag2);
     // return 0;
-    bmatchSolver.run(out);
+    bmatchSolver.run(match);
 
     // bmatchSolver.testOutputMgr();
 

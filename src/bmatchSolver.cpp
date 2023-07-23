@@ -6,7 +6,7 @@
 
 size_t Order::en_count= 0;
 
-void BMatchSolver::init(ifstream& portMapping, ifstream& aag1, ifstream& aag2, ostream& out) {
+void BMatchSolver::init(ifstream& portMapping, ifstream& aag1, ifstream& aag2) {
     std::ios::sync_with_stdio(false);
     std::cin.tie(0);
 
@@ -319,9 +319,9 @@ void BMatchSolver::addEqualConstraint(ifstream& in1, ifstream& in2) {
     cout<< "start to add equal constraint ..."<<endl;
     c1->readCircuit(in1);
     c2->readCircuit(in2);
-    cout << "c1:" << endl;
+    cout << "c1:   #PI, #PO= (" << c1->PIs.size() << ", " << c1->POs.size() << ")" << endl;
     c1->showCoverage();
-    cout << "c2:" << endl;
+    cout << "c2:   #PI, #PO= (" << c2->PIs.size() << ", " << c2->POs.size() << ")" << endl;
     c2->showCoverage();
     c1->randomSim();
     c2->randomSim();
@@ -449,7 +449,7 @@ void BMatchSolver::outputPreprocess(ifstream& in1, ifstream& in2) {
     cerr << "outputPreprocess end" << endl;
 }
 
-void BMatchSolver::run(ostream& out) {
+void BMatchSolver::run(char* match) {
     int prevTime = 0;
     cerr << "start run..." << endl;
     scoreGte((2));
@@ -515,6 +515,7 @@ void BMatchSolver::run(ostream& out) {
         // }
         // cout << "__________" << endl;
         // cout << "r1" << endl;
+
         vector<vector<bool> > negation(1, vector<bool> ());
         for (size_t i = 0; i < outputPairs.size(); ++i) {
             if (outputPairs[i]->isPos() && outputPairs[i]->isNeg()) {
@@ -558,7 +559,7 @@ void BMatchSolver::run(ostream& out) {
             if (isValidMo(currentResult)) {
                 negation[validSolNum] = negation[i];
                 ++validSolNum;
-                outputAns(out);
+                outputAns(match);
             }
             // for (auto vec: negation) {
             //     for (auto n: vec) cout << n << " ";
@@ -602,7 +603,7 @@ void BMatchSolver::run(ostream& out) {
     }
 }
 
-void BMatchSolver::outputAns(ostream& out) {
+void BMatchSolver::outputAns(char* match) {
     if (bestScore == 0) {
         cout << "No matching found!" << endl;
         return;
@@ -627,9 +628,10 @@ void BMatchSolver::outputAns(ostream& out) {
         }
         cout << endl;
     }
-
+    cout << endl;
     // output to file as required format
     // INGROUP
+    ofstream out(match);
     for (int j = 0; j < x.size(); ++j) {
         // all input in circuit 1 must be mapped
         out << "INGROUP" << endl;
@@ -1056,14 +1058,46 @@ bool BMatchSolver::outputSolve(vector<Var>& outputPairs) {
 bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
     // get input matrix
     matrixSolver.assumeRelease();
+    vector<int> current_f, current_g;
     for (int i = 0; i < fStar.size(); ++i) {
         for (int j = 0; j < f.size(); ++j) {
             bool cValue = currentResult.find(c[i][j].matrixVar) != currentResult.end();
             bool dValue = currentResult.find(d[i][j].matrixVar) != currentResult.end();
             matrixSolver.assumeProperty(c[i][j].matrixVar, cValue);
             matrixSolver.assumeProperty(d[i][j].matrixVar, dValue);
+            if (cValue || dValue) {
+                current_f.push_back(j);
+                current_g.push_back(i);
+            }
         }
     }
+    // assign redundant input mapping
+    // (1) find current assign output pair (above: current_f, current_g)
+    // (2) find the needed input
+    set<int> supportInput_x, supportInput_y;
+    set<Var> supports;
+    for (int i = 0; i < current_f.size(); ++i) {
+        supports = f[current_f[i]].getSupport();
+        for (set<int>::iterator it = supports.begin(); it != supports.end(); it++) supportInput_x.insert(*it);
+    }
+    for (int i = 0; i < current_g.size(); ++i) {
+        supports = g[current_g[i]].getSupport();
+        for (set<int>::iterator it = supports.begin(); it != supports.end(); it++) supportInput_y.insert(*it);
+    }
+
+    // (3) assign redundant
+    vector<int> redundantInput_x, redundantInput_y;
+    for (int i = 0; i < x.size(); ++i)
+        if (!supportInput_x.count(i)) redundantInput_x.push_back(i);
+    for (int i = 0; i < y.size(); ++i)
+        if (!supportInput_y.count(i)) redundantInput_y.push_back(i);
+    // cout << endl;
+    // cout << "redundantInput_x: ";
+    // for (const auto& s : redundantInput_x) cout << s << " ";
+    // cout << endl;
+    // cout << "redundantInput_y: ";
+    // for (const auto& s : redundantInput_y) cout << s << " ";
+    // cout << endl;
     while (1) {
         bool inputResult = matrixSolver.assumpSolve();
         if (!inputResult) {
@@ -1103,6 +1137,16 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
                 }
             }
         }
+        for (int i = 0; i < redundantInput_y.size(); ++i) {
+            if (redundantInput_x.size() <= i) {
+                miterSolver.assumeProperty(a[redundantInput_y[i]][x.size()].miterVar,
+                                           true);
+            } else {
+                miterSolver.assumeProperty(a[redundantInput_y[i]][redundantInput_x[i]].miterVar,
+                                           true);
+            }
+        }
+     
         if (miterSolve()) {  // UNSAT -> find a valid mapping
             // Update current answer and block answer
             return true;
