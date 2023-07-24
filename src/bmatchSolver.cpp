@@ -7,7 +7,7 @@
 
 size_t Order::en_count= 0;
 
-void BMatchSolver::init(ifstream& portMapping, ifstream& aag1, ifstream& aag2) {
+void BMatchSolver::init(ifstream& portMapping, ifstream& aag1, ifstream& aag2, char* match) {
     std::ios::sync_with_stdio(false);
     std::cin.tie(0);
 
@@ -18,6 +18,7 @@ void BMatchSolver::init(ifstream& portMapping, ifstream& aag1, ifstream& aag2) {
     genCircuitModel(portMapping, aag1, aag2);
     buildMatrix();
     genMiterConstraint();
+    file_match = match;
     bestScore = 0;
 }
 
@@ -430,10 +431,10 @@ void BMatchSolver::outputPreprocess(ifstream& in1, ifstream& in2) {
     cerr << "outputPreprocess end" << endl;
 }
 
-void BMatchSolver::run(char* match) {
+void BMatchSolver::run() {
     int prevTime = 0;
     cerr << "start run..." << endl;
-    scoreGte((2));
+    //scoreGte((2));
     // for heuristic
     bool toStep = true;
     Order* cur = outMgr.getHead();
@@ -540,7 +541,6 @@ void BMatchSolver::run(char* match) {
             if (isValidMo(currentResult)) {
                 negation[validSolNum] = negation[i];
                 ++validSolNum;
-                outputAns(match);
             }
             // for (auto vec: negation) {
             //     for (auto n: vec) cout << n << " ";
@@ -584,7 +584,7 @@ void BMatchSolver::run(char* match) {
     }
 }
 
-void BMatchSolver::outputAns(char* match) {
+void BMatchSolver::outputAns() {
     if (bestScore == 0) {
         cout << "No matching found!" << endl;
         return;
@@ -612,7 +612,7 @@ void BMatchSolver::outputAns(char* match) {
     cout << endl;
     // output to file as required format
     // INGROUP
-    ofstream out(match);
+    ofstream out(file_match);
     for (int j = 0; j < x.size(); ++j) {
         // all input in circuit 1 must be mapped
         out << "INGROUP" << endl;
@@ -659,6 +659,8 @@ void BMatchSolver::outputAns(char* match) {
     }
     out << "END" << endl
         << endl;
+    
+    out.close();
 }
 
 void BMatchSolver::genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aag2) {
@@ -1204,12 +1206,13 @@ bool BMatchSolver::miterSolve() {
         }
         outputSolver.addCNF(lits);
         int score = getScore();
-        cout << "Score: " << score << ", Best Score: " << bestScore << endl;
-
         if (score > bestScore) {
+            outputAns();
             bestScore = score;
             scoreGte(score + 1);
         }
+        cout << "Score: " << score << ", Best Score: " << bestScore << endl;
+
         return true;
     } else {
         // SAT =>

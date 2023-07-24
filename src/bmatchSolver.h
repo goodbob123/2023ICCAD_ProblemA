@@ -506,13 +506,13 @@ class BMatchSolver {
    public:
     BMatchSolver(){};
     ~BMatchSolver(){};
-    void init(ifstream& portMapping, ifstream& aag1, ifstream& aag2);
+    void init(ifstream& portMapping, ifstream& aag1, ifstream& aag2, char* match);
     void genFuncSupport(ifstream& in);
     void readBusInfo(ifstream &in, bool isCircuit1);
     void inputPreprocess();
     void outputPreprocess(ifstream& in1, ifstream& in2);
-    void run(char* match);
-    void outputAns(char* match);
+    void run();
+    void outputAns();
     void printInfo() const;
     void printBus(const Buses& bus) const;
     void printSupport(const vector<Port>& portTarget, const vector<Port>& portInv) const;
@@ -581,7 +581,8 @@ class BMatchSolver {
     // Var matching matrix
     vector<vector<Var>> outputVarMatrix;
     // vector<vector<Var>> inputVarMatrix;
-
     vector<vector<Var>> inputBusMatrix;
 
+    // file
+    char* file_match;
 };

@@ -332,6 +332,15 @@ void write_aig() {
         cout << "success print_supp !" << endl;
     }
 
+    // func support
+    sprintf(Command, "print_unate -v");
+    if (Cmd_CommandExecute(pAbc, Command)) {
+        fprintf(stdout, "Cannot execute command \"%s\".\n", Command);
+        return;
+    } else {
+        cout << "success print_supp !" << endl;
+    }
+
     sprintf(Command, "read_verilog %s", "2.v");
     if (Cmd_CommandExecute(pAbc, Command)) {
         fprintf(stdout, "Cannot execute command \"%s\".\n", Command);
@@ -366,6 +375,14 @@ void write_aig() {
 
     // func support
     sprintf(Command, "print_supp -w");
+    if (Cmd_CommandExecute(pAbc, Command)) {
+        fprintf(stdout, "Cannot execute command \"%s\".\n", Command);
+        return;
+    } else {
+        cout << "success print_supp !" << endl;
+    }
+
+    sprintf(Command, "print_unate -v");
     if (Cmd_CommandExecute(pAbc, Command)) {
         fprintf(stdout, "Cannot execute command \"%s\".\n", Command);
         return;
@@ -540,9 +557,8 @@ int main(int argc, char* argv[]) {
     ifstream aag2("2.aag");
     ifstream support("support");
     ifstream bus(input);
-    ofstream out(match);
 
-    bmatchSolver.init(portMapping, aag1, aag2);
+    bmatchSolver.init(portMapping, aag1, aag2, match);
     bmatchSolver.genFuncSupport(support);
     bmatchSolver.inputPreprocess();
     bmatchSolver.outputPreprocess(aag1, aag2);
@@ -556,7 +572,7 @@ int main(int argc, char* argv[]) {
     if (temp == 1)
         bmatchSolver.busConstraint();
         
-    bmatchSolver.run(match);
+    bmatchSolver.run();
 
     // bmatchSolver.testOutputMgr();
 
