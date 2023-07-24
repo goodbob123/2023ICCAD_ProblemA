@@ -511,17 +511,12 @@ class BMatchSolver {
     void readBusInfo(ifstream &in, bool isCircuit1);
     void inputPreprocess();
     void outputPreprocess(ifstream& in1, ifstream& in2);
-<<<<<<< HEAD
     void run(char* match);
     void outputAns(char* match);
-=======
-    void run(ostream& out);
-    void outputAns(ostream& out);
     void printInfo() const;
     void printBus(const Buses& bus) const;
     void printSupport(const vector<Port>& portTarget, const vector<Port>& portInv) const;
     void busConstraint();
->>>>>>> 03a84e3 (add bus constraints, input preprocess, and block input from output matrix)
     void testOutputMgr();
 
    protected:

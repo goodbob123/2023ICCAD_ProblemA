@@ -168,9 +168,9 @@ void BMatchSolver::inputPreprocess() {
             int diff = ity->second.size() - itx->second.size();
             sum += diff;
             cerr << "nof_support:" << setw(3) << ity->first << " , diff:" <<  diff << endl;
-            itx ++;
-            ity ++;
-            continue;
+            // itx ++;
+            // ity ++;
+            // continue;
         }
         twoWaySupport(itx->second, ity->second);
         itx ++;
@@ -366,8 +366,8 @@ void BMatchSolver::outputPreprocess(ifstream& in1, ifstream& in2) {
     in2.seekg(0, ios_base::beg);
     for (int j = 0; j < f.size(); ++j) {
         for (int i = 0; i < g.size(); ++i) {
-            // if (f[j].nofSupport() > g[i].nofSupport()) {
-            if (f[j].nofSupport() != g[i].nofSupport()) {
+            if (f[j].nofSupport() > g[i].nofSupport()) {
+            // if (f[j].nofSupport() != g[i].nofSupport()) {
                 // outputSolver.assertProperty(outputC[i][j], false);
                 // outputSolver.assertProperty(outputD[i][j], false);
                 outputSolver.assertProperty(outputVarMatrix[i][j], false);
@@ -433,7 +433,7 @@ void BMatchSolver::outputPreprocess(ifstream& in1, ifstream& in2) {
 void BMatchSolver::run(char* match) {
     int prevTime = 0;
     cerr << "start run..." << endl;
-    scoreGte((2));
+    // scoreGte((2));
     // for heuristic
     bool toStep = true;
     Order* cur = outMgr.getHead();
@@ -448,7 +448,8 @@ void BMatchSolver::run(char* match) {
     //     for (auto v: cv) cout << v.matrixVar << " ";
     //     cout << endl;
     // }
-    scoreGte((g.size() + f.size()));
+    assumeMo();
+
     while (1) {
         int execTime = (clock() - START) / CLOCKS_PER_SEC;
         if (execTime - prevTime >= 10) {
@@ -474,6 +475,7 @@ void BMatchSolver::run(char* match) {
         //     break;
         // }
         // cout << "r0" << endl;
+/*
         vector<Order*> outputPairs;
         if (toStep) {
             cur = outMgr.step();
@@ -523,7 +525,6 @@ void BMatchSolver::run(char* match) {
         //     cout << endl;
         // }
         // cout << "\\|/" << endl;
-        
         size_t validSolNum = 0;
         for (size_t i = 0; i < negation.size(); ++i) {
             set<Var> currentResult;
@@ -537,17 +538,30 @@ void BMatchSolver::run(char* match) {
             }
             // for (auto v: currentResult) cout << v << " ";
             // cout << endl;
+//*/
+        vector<Var> outputPairs;
+        if (!outputSolve(outputPairs)) {
+            cout << "No output pairs found!" << endl;
+            assumeMo();
+            continue;
+        }
+        set<Var> currentResult;
+        for (int k = 0; k < outputPairs.size(); ++k) {
+            currentResult.insert(outputPairs[k]);
+        }
             if (isValidMo(currentResult)) {
-                negation[validSolNum] = negation[i];
-                ++validSolNum;
+                // negation[validSolNum] = negation[i];
+                // ++validSolNum;
+                cerr << "VVVVVVValid" << endl;
                 outputAns(match);
+                assumeMo();
             }
             // for (auto vec: negation) {
             //     for (auto n: vec) cout << n << " ";
             //     cout << endl;
             // }
             // cout << "\\|/" << endl;
-        }
+/*        }
         // cout << "r3" << endl;
         negation.resize(validSolNum);
         bool canPos = false;
@@ -566,7 +580,7 @@ void BMatchSolver::run(char* match) {
         // cout << "r4" << endl;
 
 
-
+//*/
 
         // origin output SAT
         // set<Var> currentResult;
@@ -1208,7 +1222,7 @@ bool BMatchSolver::miterSolve() {
 
         if (score > bestScore) {
             bestScore = score;
-            scoreGte(score + 1);
+            // scoreGte(score + 1);
         }
         return true;
     } else {
@@ -1349,13 +1363,13 @@ void BMatchSolver::printInfo() const{
 
     cerr << "------------ Support ------------" << endl;
     cerr  << "--- Cir 1 ---" << endl;
-    cerr  << "- input -" << endl;
-    printSupport(x, f);
+    // cerr  << "- input -" << endl;
+    // printSupport(x, f);
     cerr  << "- output -" << endl;
     printSupport(f, x);
     cerr  << "--- Cir 2 ---" << endl;
-    cerr  << "- input -" << endl;
-    printSupport(y, g);
+    // cerr  << "- input -" << endl;
+    // printSupport(y, g);
     cerr  << "- output -" << endl;
     printSupport(g, y);
     cerr << endl;
@@ -1399,14 +1413,17 @@ void BMatchSolver::twoWaySupport(const set<int>& oneIndice, const set<int>& twoI
     for (int i = 0; i < y.size(); ++i) {
         if (twoIndice.find(i) == twoIndice.end())
             continue;
-        for (int j = 0; j < x.size() + 1; ++j) {
+        for (int j = 0; j < x.size(); ++j) {
             if (oneIndice.find(j) == oneIndice.end()) {
                 matrixSolver.assertProperty(a[i][j].matrixVar, false);
                 matrixSolver.assertProperty(b[i][j].matrixVar, false);
             }
         }
+        if (oneIndice.size() == twoIndice.size()) {
+            matrixSolver.assertProperty(a[i][x.size()].matrixVar, false);
+            matrixSolver.assertProperty(b[i][x.size()].matrixVar, false);
+        }
     }
-    cerr << endl;
 }
 
 void BMatchSolver::assumeMo() {
@@ -1451,7 +1468,7 @@ void BMatchSolver::busConstraint() {
 
 void BMatchSolver::connectBus(Var connectVar, const set<int>& bus1, const set<int>& bus2) {
     if (bus1.size() != bus2.size()) {
-        cerr << "EEEEEEEEEEEErrorrrrrr: bus sizes are not equal!" << endl;
+        // cerr << "EEEEEEEEEEEErrorrrrrr: bus sizes are not equal!" << endl;
         return;
     }
     vector<Lit> lits;
@@ -1489,3 +1506,64 @@ void BMatchSolver::assumeInputRedundnatFromOutput(const set<int>& input1, const 
         }
     }
 }
+
+
+/*
+
+case 6:
+16(14) 3(14) 
+7(22) 23(23)
+8(30) 12(32)
+22(34) 1(37)
+4(37) 4(40)
+21(39) 18(43)
+14(42) 9(46)
+16 3 7 23 8 12 22 1 4 4 21 18 14 9 -1
+
+2(44) 17(48)
+19(46) 11(50)
+11(48) 15(52)
+13(50) 2(54)
+1(52) 6(56)
+5(54) 21(58)
+0(56) 19(60)
+12(58) 8(62)
+15(60) 10(64)
+
+
+25(62) 24(66)
+23(64) 7(68)
+9(66) 0(70)
+6(68) 25(72)
+20(70) 14(74)
+24(72) 16(76)
+17(74) 5(78)
+10(76) 22(80)
+18(78) 13(82)
+3(80) 20(84)
+
+16 3 7 23 8 12 22 1 4 4 21 18 14 9 
+2 17
+19 11
+11 15
+13 2
+1 6
+5 21
+0 19
+12 8
+15 10
+
+25 24
+23 7
+9 0
+6 25
+20 14
+24 16
+17 5
+10 22
+18 13
+3 20
+
+case 7:
+5 0 4 2 3 1 -1 valid
+*/
