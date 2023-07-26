@@ -62,16 +62,66 @@ struct PortHashFunc {
     }
 };
 
+
+class BusInfo
+{
+    public:
+        BusInfo(size_t id, set<int>& bus) {
+            bus_id = id;
+            busPort = &bus;
+            remain_bus = bus.size();
+            connectBus = vector<BusInfo*> ();
+        }
+        size_t getId() { return bus_id - 1; }
+        size_t getBusSize() { return busPort->size(); }
+        set<int> getBusPort() { return *busPort; }
+        bool isConnect() { return !connectBus.empty();}
+        bool isFull() { return (remain_bus == 0); }
+        bool canMatch(BusInfo& b) {
+            if (b.isConnect() && isConnect()) return false;
+            else if (isConnect()) return remain_bus > b.busPort->size();
+            else if (b.isConnect()) return b.remain_bus > busPort->size();
+            else return true;
+        }
+        void connect(BusInfo& b) {
+            assert(canMatch(b));
+            size_t numConnect = std::min(b.getBusSize(), getBusSize());
+            assert(b.remain_bus >= numConnect && remain_bus >= numConnect);
+            b.remain_bus -= numConnect;
+            b.connectBus.push_back(this);
+            remain_bus -= numConnect;
+            connectBus.push_back(&b);
+        }
+        void disconnectBack() {
+            BusInfo* bptr = connectBus.back();
+            assert(bptr->connectBus.back() == this);
+            size_t numConnect = std::min(bptr->getBusSize(), getBusSize());
+            bptr->remain_bus+=numConnect;
+            assert(bptr->remain_bus <= bptr->busPort->size());
+            bptr->connectBus.pop_back();
+            remain_bus+=numConnect;
+            assert(remain_bus <= busPort->size());
+            connectBus.pop_back();
+        }
+    private:
+        // size_t bus_size;
+        size_t bus_id;  // 0 if not a bus, just a pin
+        size_t remain_bus;
+        vector<BusInfo*> connectBus;
+        set<int>* busPort;
+};
 class Order
 {   // Order would record the information about the assignment of f->g and the assignment chain
     public:
         Order() {
             is_head = true;
         }
-        Order(Port* _gport_ptr, size_t _gport_id, Port* _fport_ptr, size_t _fport_id) {
+        Order(Port* _gport_ptr, size_t _gport_id, BusInfo* _gBus_ptr, Port* _fport_ptr, size_t _fport_id, BusInfo* _fBus_ptr) {
             is_head = false;
+            fBus_ptr = _fBus_ptr;
             fport_ptr = _fport_ptr;
             fport_id = _fport_id;
+            gBus_ptr = _gBus_ptr;
             gport_ptr = _gport_ptr;
             gport_id = _gport_id;
             is_assign = false;
@@ -230,6 +280,8 @@ class Order
         size_t fport_id; // correspond index of port in f
         Port* gport_ptr;
         size_t gport_id;
+        BusInfo* fBus_ptr;
+        BusInfo* gBus_ptr;
         bool is_assign; // is fport->gport matching assigned
         bool is_pos;    // whether positive match is possible
         bool is_neg;    // whether negation match is possible
@@ -246,17 +298,7 @@ class Order
         Order* assign_pre; // pre Order in assignment chain
 
 };
-// class BusInfo
-// {
-//     public:
-//         BusInfo() {}
-//         vector<BusInfo*> connectBus;
-//         size_t bus_size;
-//         size_t bus_id;
-//         size_t remain_bus;
-//         bool isConnect() { return !connectBus.empty();}
-//         bool isFull() { return (remain_bus == 0); }
-// };
+
 // from big to small
 class Comparator {  
     // cmp num Support
@@ -265,35 +307,39 @@ class Comparator {
         bool operator() (pair<size_t, Port>& a, pair<size_t, Port>& b) {
             return a.second.nofSupport() < b.second.nofSupport();
         }
+        bool operator() (Order& a, Order& b) {
+            // todo
+            return false;
+        }
+        bool operator() (set<int>& a, set<int>& b) {
+            return a.size() < b.size();
+        }
 };
 
+typedef vector<set<int>> Buses;
 class OutPortMgr
 {
     public:
         OutPortMgr() {}
     
-        void init(vector<Port>& _fptr, vector<Port>& _gptr) {
-            fptr = &_fptr;
-            gptr = &_gptr;
-            is_one_to_one = (_fptr.size() == _gptr.size());
+        void init(vector<Port>& _f, vector<Port>& _g, Buses& _fBus, Buses& _gBus) {
+            fptr = &_f;
+            gptr = &_g;
+            fBusptr = &_fBus;
+            gBusptr = &_gBus;
+            is_one_to_one = (_f.size() == _g.size());
             order_map = vector<vector<Order> > ();
+            fbus_map = vector<set<BusInfo*> > ();
+            gbus_map = vector<set<BusInfo*> > ();
             assign_head = new Order();
             assign_current = assign_head;
             is_backtrack = false;
 
             // cout << "Mgr2" << endl;
-            for (size_t i = 0; i < _gptr.size(); ++i) {
-                vector<Order> buffer;
-                for (size_t j = 0; j < _fptr.size(); ++j) {
-                    Order ord(&_gptr[i], i, &_fptr[j], j);
-                    buffer.push_back(ord);
-                }
-                order_map.push_back(buffer);
-            }
+            genMaps();
             // cout << "Mgr1" << endl;
             genHeuristicOrder();    // i.e. gen possible order chain
             // cout << "Mgr0" << endl;
-            genBusInfo();
         }
         Order* step() {
             size_t pre_id = assign_current->getId();    // id is index in possible assignment chain
@@ -348,15 +394,83 @@ class OutPortMgr
         bool is_one_to_one; // do we assume output is one to one
         vector<Port>* fptr; // copy of f
         vector<Port>* gptr; // copy of g
+        Buses* fBusptr;
+        Buses* gBusptr;
 
-        // vector<BusInfo> fbus;
-        // vector<BusInfo> gbus;
+        // vector<BusInfo> fBus;
+        // vector<BusInfo> gBus;
 
         vector<vector<Order> > order_map; // matrix of Order, same as format of c, d in bmatch
+        vector<set<BusInfo*> > fbus_map;
+        vector<set<BusInfo*> > gbus_map;
         Order* assign_head; // pseudo head of chain of possible assignment
         Order* assign_current;  // current end of assignment
         bool is_backtrack;  // whether previous step is backtracking
+        // init
+        void genMaps() {
+            // todo
 
+            vector<BusInfo*> f_businfo(fptr->size(), 0);
+            vector<BusInfo*> g_businfo(gptr->size(), 0);
+
+            for (size_t i = 0; i < fBusptr->size(); ++i) {
+                set<int>& bus = fBusptr->at(i);
+                BusInfo* bufptr = new BusInfo(i + 1, bus);
+                for (set<int>::iterator itr = bus.begin(); itr != bus.end(); ++itr) {
+                    f_businfo[*itr] = bufptr;
+                }
+            }
+            for (size_t i = 0; i < f_businfo.size(); ++i) {
+                if (f_businfo[i] == 0) {
+                    set<int> bufbus = set<int> ();
+                    bufbus.insert(i);
+                    BusInfo* bufptr = new BusInfo(0, bufbus);
+                    f_businfo[i] = bufptr;
+                }
+            }
+
+            for (size_t i = 0; i < gBusptr->size(); ++i) {
+                set<int>& bus = gBusptr->at(i);
+                BusInfo* bufptr = new BusInfo(i + 1, bus);
+                for (set<int>::iterator itr = bus.begin(); itr != bus.end(); ++itr) {
+                    g_businfo[*itr] = bufptr;
+                }
+            }
+            for (size_t i = 0; i < g_businfo.size(); ++i) {
+                if (g_businfo[i] == 0) {
+                    set<int> bufbus = set<int> ();
+                    bufbus.insert(i);
+                    BusInfo* bufptr = new BusInfo(0, bufbus);
+                    g_businfo[i] = bufptr;
+                }
+            }
+
+            for (size_t i = 0; i < f_businfo.size(); ++i) {
+                cout << i << " : ";
+                for (auto port : f_businfo[i]->getBusPort()) {
+                    cout << port << " ";
+                }
+                cout << endl;
+            }
+
+            for (size_t i = 0; i < g_businfo.size(); ++i) {
+                cout << i << " : ";
+                for (auto port : g_businfo[i]->getBusPort()) {
+                    cout << port << " ";
+                }
+                cout << endl;
+            }
+
+            for (size_t i = 0; i < gptr->size(); ++i) {
+                vector<Order> buffer;
+                for (size_t j = 0; j < fptr->size(); ++j) {
+                    Order ord(&gptr->at(i), i, g_businfo[i], &fptr->at(j), j, f_businfo[j]);
+                    buffer.push_back(ord);
+                }
+                order_map.push_back(buffer);
+            }
+        }
+        // init
         void genHeuristicOrder() {
 
             vector<pair<size_t, Port> > f_sort;
@@ -451,6 +565,7 @@ class OutPortMgr
             nxt->enable(0); // nxt of tail make it 0
 
         }
+        // init-genHeuristicOrder
         void groupMapping(pair<size_t, Port>& fp, pair<size_t, Port>& gp, vector<vector<Order*> >& order_sort) {
             // Order* buf_order_ptr = &order_map[fp.first][gp.first];
             Order* buf_order_ptr = &order_map[gp.first][fp.first];
@@ -462,9 +577,7 @@ class OutPortMgr
             while (order_sort.size() <= group) order_sort.push_back(vector<Order*> ()); // add group size till enough
             order_sort[group].push_back(buf_order_ptr);
         }
-        void genBusInfo() {
-            // todo
-        }
+        // step
         void noRemapRule() {
             // cout << assign_current << endl;
             // assign_current->printMapping();
@@ -498,9 +611,6 @@ struct mtx2Mit {
     Var matrixVar;
     Var miterVar;
 };
-
-
-typedef vector<set<int>> Buses;
 
 class BMatchSolver {
    public:

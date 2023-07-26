@@ -427,12 +427,13 @@ void BMatchSolver::outputPreprocess(ifstream& in1, ifstream& in2) {
             }
         }
     //*/
-    outMgr.init(f, g);
     cerr << "outputPreprocess end" << endl;
 }
 
 void BMatchSolver::run() {
     int prevTime = 0;
+    cout << "generate output heuristic order" << endl;
+    outMgr.init(f, g, fBus, gBus);
     cerr << "start run..." << endl;
     //scoreGte((2));
     // for heuristic
@@ -1331,6 +1332,9 @@ void BMatchSolver::readBusInfo(ifstream &in, bool isCircuit1) {
     }
     Buses &buses = isCircuit1 ? (isInput ? xBus : fBus) : (isInput ? yBus : gBus);
     buses.push_back(bus);
+    // for (set<int>::iterator itr = bus.begin(); itr != bus.end(); itr++) {
+    //     
+    // }
   }
   
 }
