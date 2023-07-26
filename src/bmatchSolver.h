@@ -25,6 +25,7 @@ class Port {
     string getName() const { return name; }
     Var getVar() const { return var; }
     set<int> getSupport() const { return supports; }
+    int getCoverage() const { return coverage; }
 
     void addSupport(int index) { supports.insert(index); }
     size_t nofSupport() const { return supports.size(); }
@@ -34,6 +35,7 @@ class Port {
     string name;
     Var var;
     set<int> supports;  // output support for input port, input support for output port
+    int coverage;       // only for ontput (f,g)
 };
 
 struct PortHashKey {
@@ -510,7 +512,7 @@ class BMatchSolver {
     void genFuncSupport(ifstream& in);
     void readBusInfo(ifstream &in, bool isCircuit1);
     void inputPreprocess();
-    void outputPreprocess(ifstream& in1, ifstream& in2);
+    void outputPreprocess();
     void run();
     void outputAns();
     void printInfo() const;
@@ -533,7 +535,8 @@ class BMatchSolver {
     int getScore();
     void scoreGte(int x);
 
-    void addEqualConstraint(ifstream& in1, ifstream& in2);
+    void initCircuit(ifstream& in1, ifstream& in2);
+    void addEqualConstraint();
     void createEqualRelationByGroup(const vector<pair<CirGate*, bool>>& group_f,
                                     const vector<pair<CirGate*, bool>>& group_g);
     void createEqualRelationByOneOutput(const int index_f,
@@ -553,11 +556,13 @@ class BMatchSolver {
     // Circuit 1
     vector<Port> x;
     vector<Port> f;
+    CirMgr* c1;
 
     // Circuit 2
     vector<Port> y;
     vector<Port> g;
     vector<Var> fStar;
+    CirMgr* c2;
 
     // I/O Matrix
     vector<vector<mtx2Mit>> a, b, c, d;

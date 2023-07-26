@@ -561,7 +561,7 @@ int main(int argc, char* argv[]) {
     bmatchSolver.init(portMapping, aag1, aag2, match);
     bmatchSolver.genFuncSupport(support);
     bmatchSolver.inputPreprocess();
-    bmatchSolver.outputPreprocess(aag1, aag2);
+    bmatchSolver.outputPreprocess();
     bmatchSolver.readBusInfo(bus, true);
     bmatchSolver.readBusInfo(bus, false);
     bmatchSolver.printInfo();

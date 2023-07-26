@@ -12,8 +12,8 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <unordered_map>
 #include <vector>
-
 using namespace std;
 
 // TODO: Feel free to define your own classes, variables, or functions.
@@ -78,9 +78,11 @@ class CirMgr {
     string getIOName(const CirGate *) const;
 
     //  Member function about coverage
-    void showCoverage();
-    void coverage(CirGate *g);
-    void coverageHelper(CirGate *g, int &count, int &support);
+    // void showCoverage();
+    // void coverage(CirGate *g);
+    void coverageHelper(CirGate* g, int& coverage, vector<int>& supports);
+    void getSupportCoverageInfo(vector<int> &allCoverage, vector<vector<int>> &allSupports);
+    void showInfo();
 
     // update Function
     void updateFanout();
@@ -114,6 +116,10 @@ class CirMgr {
     vector<int> var2id;
     bool isSimulated = false;
     bool isStrashed = false;
+
+    // for CAD tmp data
+    vector<int> all_coverage;
+    unordered_map<int, int> id2Idx;
 };
 
 #endif  // CIR_MGR_H

@@ -547,40 +547,74 @@ void CirMgr::DFS(CirGate* g) {
     }
 }
 
-void CirMgr::coverageHelper(CirGate* g, int& count, int& support) {
+void CirMgr::coverageHelper(CirGate* g, int& coverage, vector<int>& supports) {
     if (find(trace.begin(), trace.end(), g->id) == trace.end()) {
         if (g->fanin0id != -1) {
-            if (all[g->fanin0id] != 0) coverageHelper(all[g->fanin0id], count, support);
+            if (all[g->fanin0id] != 0) coverageHelper(all[g->fanin0id], coverage, supports);
         }
         if (g->fanin1id != -1) {
-            if (all[g->fanin1id] != 0) coverageHelper(all[g->fanin1id], count, support);
+            if (all[g->fanin1id] != 0) coverageHelper(all[g->fanin1id], coverage, supports);
         }
         trace.push_back(g->id);
-        if (g->type == PI_GATE) ++support;
-        ++count;
+        // if (g->type == PI_GATE) {
+        //     supports.push_back(id2Idx[g->id]);
+        // }
+        ++coverage;
     }
 }
 
-void CirMgr::coverage(CirGate* g) {
-    trace.clear();
-    int count = 0, support = 0;
-    coverageHelper(g, count, support);
-    cout << setw(4) << g->getId();
-    if (getIOName(g) != "") {
-        cout << setw(6) << "(" << getIOName(g) << ")";
+void CirMgr::getSupportCoverageInfo(vector<int>& allCoverage, vector<vector<int>>& allSupports) {
+    for (size_t i = 0; i < PIs.size(); ++i) {
+        id2Idx[PIs[i]->id] = i;
     }
-    cout << " coverage : " << setw(4) << count << ", support: " << setw(4) << support << endl;
+    for (size_t i = 0; i < POs.size(); ++i) {
+        trace.clear();
+        int coverage = 0;
+        vector<int> supports;
+        coverageHelper(POs[i], coverage, supports);
+        all_coverage.push_back(coverage);
+        // all_supports.push_back(supports);
+    }
+
+    // support process
+    // vector<vector<int>> all_supports_tmp;
+    // all_supports_tmp = vector<vector<int>>(POs.size(), vector<int>(PIs.size(), 0));
+    // for (size_t i = 0; i < all_supports.size(); ++i) {
+    //     for (size_t j = 0; j < all_supports[i].size(); ++j) {
+    //         all_supports_tmp[i][all_supports[i][j]] = 1;
+    //     }
+    // }
+    // all_supports = all_supports_tmp;
+
+    allCoverage = all_coverage;
+    // allSupports = all_supports;
 }
 
-void CirMgr::showCoverage() {
-    // optimize();
-    // sweep();
-    // strash();
+void CirMgr::showInfo() {
+    if (all_coverage.empty()) {
+        cout << "please getSupportCoverageInfo() first" << endl;
+        return;
+    }
+    // show Coverage
     cout << "========= Coverage ========" << endl;
     for (size_t i = 0; i < POs.size(); ++i) {
-        coverage(POs[i]);
+        cout << setw(4) << POs[i]->getId();
+        if (getIOName(POs[i]) != "") {
+            cout << setw(6) << "(" << getIOName(POs[i]) << ")";
+        }
+        // cout << " coverage : " << setw(4) << all_coverage[i] << ", support: " << setw(4) << count(all_supports[i].begin(), all_supports[i].end(), 1)
+        //      << endl;
+        cout << " coverage : " << setw(4) << all_coverage[i] << endl;
     }
     cout << "===========================" << endl;
+
+    // show support
+    // for (size_t i = 0; i < POs.size(); ++i) {
+    //     for (size_t j = 0; j < PIs.size(); ++j) {
+    //         cout << all_supports[i][j];
+    //     }
+    //     cout << endl;
+    // }
 }
 
 void CirMgr::updateFanout() {
