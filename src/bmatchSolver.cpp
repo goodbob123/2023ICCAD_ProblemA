@@ -314,11 +314,9 @@ void BMatchSolver::initCircuit(ifstream& in1, ifstream& in2) {
     // coverage init
     for (size_t i = 0; i < f.size(); ++i) {
         f[i].coverage = f_coverage[i];
-        cout <<i<< " : "<< f[i].coverage << endl;
     }
     for (size_t i = 0; i < g.size(); ++i) {
         g[i].coverage = g_coverage[i];
-        cout <<i<< " : "<< g[i].coverage << endl;
     }
 }
 
