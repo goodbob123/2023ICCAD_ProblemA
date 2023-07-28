@@ -431,6 +431,7 @@ void BMatchSolver::outputPreprocess(ifstream& in1, ifstream& in2) {
 }
 
 void BMatchSolver::run() {
+    bool considerAll = false;
     int prevTime = 0;
     cout << "generate output heuristic order" << endl;
     outMgr.init(f, g, fBus, gBus);
@@ -439,6 +440,12 @@ void BMatchSolver::run() {
     // for heuristic
     bool toStep = true;
     Order* cur = outMgr.getHead();
+
+    outMgr.printAssign();
+    for (auto assign: outMgr.getAllAssign()) {
+        assign->printMapping();
+    }
+    cout << "__________" << endl;
 
     // cout << "c_matrix" << endl;
     // for (auto cv: c) {
@@ -475,7 +482,7 @@ void BMatchSolver::run() {
         //     cout << "No output pairs found!" << endl;
         //     break;
         // }
-        // cout << "r0" << endl;
+        cout << "r0" << endl;
         vector<Order*> outputPairs;
         if (toStep) {
             cur = outMgr.step();
@@ -491,13 +498,14 @@ void BMatchSolver::run() {
             cout << "No output pairs found!" << endl;
             break;
         }
+        cout << "assignment: " << endl;
         outputPairs = outMgr.getAllAssign();
-        // outMgr.printAssign();
-        // for (auto assign: outputPairs) {
-        //     assign->printMapping();
-        // }
-        // cout << "__________" << endl;
-        // cout << "r1" << endl;
+        outMgr.printAssign();
+        for (auto assign: outputPairs) {
+            assign->printMapping();
+        }
+        cout << "__________" << endl;
+        cout << "r1" << endl;
 
         vector<vector<bool> > negation(1, vector<bool> ());
         for (size_t i = 0; i < outputPairs.size(); ++i) {
@@ -518,7 +526,7 @@ void BMatchSolver::run() {
             // }
             if (negation.size() > 50) negation.resize(50);
         }
-        // cout << "r2" << endl;
+        cout << "r2" << endl;
 
         // for (auto vec: negation) {
         //     for (auto n: vec) cout << n << " ";
@@ -542,6 +550,7 @@ void BMatchSolver::run() {
             if (isValidMo(currentResult)) {
                 negation[validSolNum] = negation[i];
                 ++validSolNum;
+                if (!considerAll) break;
             }
             // for (auto vec: negation) {
             //     for (auto n: vec) cout << n << " ";
@@ -549,7 +558,8 @@ void BMatchSolver::run() {
             // }
             // cout << "\\|/" << endl;
         }
-        // cout << "r3" << endl;
+        cout << "r3" << endl;
+        if (!considerAll) assert(validSolNum < 2);
         negation.resize(validSolNum);
         bool canPos = false;
         bool canNeg = false;
@@ -564,7 +574,7 @@ void BMatchSolver::run() {
         if (!canNeg) outputPairs[end]->failNeg();
         
         toStep = negation.size() != 0;
-        // cout << "r4" << endl;
+        cout << "r4" << endl;
 
 
 

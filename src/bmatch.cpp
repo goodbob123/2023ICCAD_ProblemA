@@ -573,7 +573,7 @@ int main(int argc, char* argv[]) {
         bmatchSolver.busConstraint();
         
     bmatchSolver.run();
-
+    cout << "finish run" << endl;
     // bmatchSolver.testOutputMgr();
 
 
@@ -584,4 +584,5 @@ int main(int argc, char* argv[]) {
     remove("circuit_2.aag");
     remove("name");
     remove("support");
+    cout << "program done" << endl;
 }
