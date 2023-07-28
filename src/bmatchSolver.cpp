@@ -16,6 +16,7 @@ void BMatchSolver::init(ifstream& portMapping, ifstream& aag1, ifstream& aag2, c
     miterSolver.initialize();
 
     genCircuitModel(portMapping, aag1, aag2);
+    initCircuit(aag1, aag2);
     buildMatrix();
     genMiterConstraint();
     file_match = match;
@@ -285,9 +286,7 @@ void BMatchSolver::createEqualRelationByGroup(const vector<pair<CirGate*, bool>>
     return;
 }
 
-void BMatchSolver::addEqualConstraint(ifstream& in1, ifstream& in2) {
-    CirMgr* c1 = new CirMgr;
-    CirMgr* c2 = new CirMgr;
+void BMatchSolver::initCircuit(ifstream& in1, ifstream& in2) {
     if (!in1) {
         cout << "can not open file 1" << endl;
         return;
@@ -296,13 +295,33 @@ void BMatchSolver::addEqualConstraint(ifstream& in1, ifstream& in2) {
         cout << "can not open file 2" << endl;
         return;
     }
-    cout<< "start to add equal constraint ..."<<endl;
+    in1.seekg(0, ios_base::beg);
+    in2.seekg(0, ios_base::beg);
+    c1 = new CirMgr;
+    c2 = new CirMgr;
     c1->readCircuit(in1);
     c2->readCircuit(in2);
+
     cout << "c1:   #PI, #PO= (" << c1->PIs.size() << ", " << c1->POs.size() << ")" << endl;
-    c1->showCoverage();
+    vector<int> f_coverage, g_coverage;
+    vector<vector<int>> f_support, g_support;
+    c1->getSupportCoverageInfo(f_coverage, f_support);
+    c1->showInfo();
     cout << "c2:   #PI, #PO= (" << c2->PIs.size() << ", " << c2->POs.size() << ")" << endl;
-    c2->showCoverage();
+    c2->getSupportCoverageInfo(g_coverage, g_support);
+    c2->showInfo();
+
+    // coverage init
+    for (size_t i = 0; i < f.size(); ++i) {
+        f[i].coverage = f_coverage[i];
+    }
+    for (size_t i = 0; i < g.size(); ++i) {
+        g[i].coverage = g_coverage[i];
+    }
+}
+
+void BMatchSolver::addEqualConstraint() {
+    cout << "start to add equal constraint ..." << endl;
     c1->randomSim();
     c2->randomSim();
     vector<vector<pair<CirGate*, bool>>> equalGroup_1, equalGroup_2;
@@ -361,10 +380,8 @@ void BMatchSolver::addEqualConstraint(ifstream& in1, ifstream& in2) {
     cout<< "end to add equal constraint ..."<<endl;
 }
 
-void BMatchSolver::outputPreprocess(ifstream& in1, ifstream& in2) {
+void BMatchSolver::outputPreprocess() {
     cerr << "outputPreprocess start..." << endl;
-    in1.seekg(0, ios_base::beg);
-    in2.seekg(0, ios_base::beg);
     for (int j = 0; j < f.size(); ++j) {
         for (int i = 0; i < g.size(); ++i) {
             // if (f[j].nofSupport() > g[i].nofSupport()) {
@@ -375,9 +392,7 @@ void BMatchSolver::outputPreprocess(ifstream& in1, ifstream& in2) {
             }
         }
     }
-    addEqualConstraint(in1, in2);
-    in1.close();
-    in2.close();
+    addEqualConstraint();
     /*
         map<int, int> fSupp;
         map<int, int> gSupp;
