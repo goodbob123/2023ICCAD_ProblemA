@@ -1,9 +1,10 @@
 #include "bmatchSolver.h"
 
+#include <iomanip>
 #include <map>
+#include <set>
 #include <string>
 #include <unordered_map>
-#include <iomanip>
 
 size_t Order::en_count= 0;
 
@@ -376,7 +377,7 @@ void BMatchSolver::addEqualConstraint() {
                                            equalGroup_2[index_2]);
         }
     }
-    delete c1, c2;
+
     cout<< "end to add equal constraint ..."<<endl;
 }
 
@@ -494,12 +495,10 @@ void BMatchSolver::run() {
         if (toStep) {
             cur = outMgr.step();
             if (cur!= 0 && outMgr.isBacktrack()) cur = outMgr.step();
-            assert(!outMgr.isBacktrack());
         } 
         else {
             cur = outMgr.backTrack();
             if (cur != 0) cur = outMgr.step();
-            assert(!outMgr.isBacktrack());
         }
         if (cur == 0) {
             cout << "No output pairs found!" << endl;
@@ -573,7 +572,6 @@ void BMatchSolver::run() {
             if (negation[i][end] == false) canPos = true;
             if (canPos && canNeg) break;
         }
-        assert(canPos || canNeg || negation.size == 0);
         if (!canPos) outputPairs[end]->failPos();
         if (!canNeg) outputPairs[end]->failNeg();
         
@@ -1235,6 +1233,18 @@ bool BMatchSolver::miterSolve() {
         // l_O = (g[i] != f[j]) ? ~c[i][j] : ~d[i][j]
         // l_I = (x[j] != y[i]) ? a[i][j] : b[i][j]
         vector<Lit> lits;
+
+        // partial assignment
+        vector<int> assign_x, assign_y, assign_f, assign_g;
+        vector<set<int>> necessary_f, necessary_g;
+        for (int i = 0; i < x.size(); ++i) assign_x.push_back(miterSolver.getValue(x[i].getVar()));
+        for (int i = 0; i < y.size(); ++i) assign_y.push_back(miterSolver.getValue(y[i].getVar()));
+        for (int i = 0; i < f.size(); ++i) assign_f.push_back(miterSolver.getValue(f[i].getVar()));
+        for (int i = 0; i < g.size(); ++i) assign_g.push_back(miterSolver.getValue(g[i].getVar()));
+
+        necessary_f = c1->getNecessary(assign_x, assign_f);
+        necessary_g = c2->getNecessary(assign_y, assign_g);
+
         for (int i = 0; i < fStar.size(); ++i) {
             for (int j = 0; j < f.size(); ++j) {
                 if (miterSolver.getValue(g[i].getVar()) !=
@@ -1243,12 +1253,24 @@ bool BMatchSolver::miterSolve() {
                 } else {
                     lits.push_back(~Lit(d[i][j].matrixVar));
                 }
+                cout << "The f[" << j << "] pattern: " << miterSolver.getValue(f[j].getVar()) << " supprot: ";
+                for (auto& s : f[j].supports) cout << s << " ";
+                cout << ", necessary : ";
+                for (auto& s : necessary_f[j]) cout << s << " ";
+                cout << endl;
+                cout << "The g[" << i << "] supprot: ";
+                for (auto& s : g[i].supports) cout << s << " ";
+                cout << ", necessary : ";
+                for (auto& s : necessary_g[i]) cout << s << " ";
+                cout << endl;
                 // TODO: and or or
                 for (int k = 0; k < y.size(); ++k) {
                     if (!g[i].isSupport(k))
+                        // if (!necessary_g[i].count(k))
                         continue;
                     for (int l = 0; l < x.size(); ++l) {  // +1 or not
                         if (!f[j].isSupport(l))
+                            // if (!necessary_f[j].count(l))
                             continue;
                         if (miterSolver.getValue(y[k].getVar()) !=
                             miterSolver.getValue(x[l].getVar())) {

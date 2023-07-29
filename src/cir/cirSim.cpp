@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <bitset>
 #include <cassert>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -36,11 +37,6 @@ using namespace std;
 /*   Public member functions about Simulation   */
 /************************************************/
 void CirMgr::randomSim() {
-    // uint32_t randomNum1 = distribution(generator);
-    // uint32_t randomNum2 = distribution(generator);
-    // cout << "Random number: " << bitset<32>(randomNum1) << endl;
-    // cout << "Random number: " << bitset<32>(randomNum2) << endl;
-
     if (inputId2Pattern.empty()) {
         inputId2Pattern = vector<int>(all.size());
         for (size_t i = 0; i < PIs.size(); ++i) {
@@ -74,8 +70,7 @@ void CirMgr::randomSim() {
         simulate64times();
         ++patternSize;
     }
-    // cout << "now GroupSize: " << SimGroups.size() << endl;
-    // cout << patternSize * 64 << " patterns simulated." << endl;
+
     isSimulated = true;
 }
 
@@ -117,7 +112,6 @@ void CirMgr::fileSim(ifstream& patternFile) {
             ++count_64;
             ++all_lineCount;
             allWriteLine = all_lineCount;
-            // cout << line << endl;
             if (count_64 == 64) {
                 count_64 = 0;
                 // if (PIs[0]->pattern == 0)
@@ -140,7 +134,6 @@ void CirMgr::fileSim(ifstream& patternFile) {
         simulate64times();
         inputPattern.clear();
         inputPattern = vector<uint64_t>(PIs.size());
-
         patternFile.close();
         cout << all_lineCount << " patterns simulated." << endl;
         isSimulated = true;
@@ -153,52 +146,8 @@ void CirMgr::fileSim(ifstream& patternFile) {
 /*   Private member functions about Simulation   */
 /*************************************************/
 
-// old
-// uint64_t CirMgr::findPattern(CirGate* g) {
-//     // if (g != 0) {
-//     //     cout << "nowGate: " << g->id << " " << g->getTypeName()
-//     // }
-//     // undefined
-//     if (g == 0) {
-//         return 0;
-//     } else if (g->type == PI_GATE) {
-//         return inputPattern[g->id - 1];
-//     } else if (g->type == CONST_GATE) {
-//         g->pattern = 0;
-//         return 0;
-//     } else if (g->type == PO_GATE) {
-//         uint64_t fanin0 = findPattern(all[g->fanin0id]);
-//         if (g->fanin0cp) fanin0 = (~fanin0);
-//         g->pattern = fanin0;
-//         return fanin0;
-//     }
-
-//     else {
-//         uint64_t fanin0 = findPattern(all[g->fanin0id]);
-//         uint64_t fanin1 = findPattern(all[g->fanin1id]);
-
-//         // different situation
-//         if (g->fanin0cp && g->fanin1cp) {
-//             g->pattern = ((~fanin0) & (~fanin1));
-//             return ((~fanin0) & (~fanin1));
-//         } else if (g->fanin0cp & !g->fanin1cp) {
-//             g->pattern = (~fanin0) & fanin1;
-//             return (~fanin0) & fanin1;
-//         } else if (!g->fanin0cp && g->fanin1cp) {
-//             g->pattern = fanin0 & (~fanin1);
-//             return fanin0 & (~fanin1);
-//         } else {
-//             g->pattern = (fanin0 & fanin1);
-//             return (fanin0 & fanin1);
-//         }
-//     }
-// }
-
 // new true == need to change
 bool CirMgr::findPattern(CirGate* g, vector<bool>& isUpdate) {
-    // if (g != 0) {
-    //     cout << "nowGate: " << g->id << " " << g->getTypeName()
-    // }
     // undefined
     if (g == 0) {
         return false;
@@ -227,12 +176,6 @@ bool CirMgr::findPattern(CirGate* g, vector<bool>& isUpdate) {
         bool isFanin0Change = findPattern(all[g->fanin0id], isUpdate);
         bool isFanin1Change = findPattern(all[g->fanin1id], isUpdate);
         if (isFanin0Change || isFanin1Change) {
-            // cout << "  " << g->id << "  here" << endl;
-            // bool flag = false;
-            // if (g->pattern == 0) {
-            //     cout << g->id << ": " << g->pattern << " vs negate: " << ~g->pattern << endl;
-            //     flag = true;
-            // }
             uint64_t fanin0 = all[g->fanin0id]->type == PI_GATE ? inputPattern[inputId2Pattern[g->fanin0id]] : all[g->fanin0id]->pattern;
             uint64_t fanin1 = all[g->fanin1id]->type == PI_GATE ? inputPattern[inputId2Pattern[g->fanin1id]] : all[g->fanin1id]->pattern;
             // different situation
@@ -245,9 +188,6 @@ bool CirMgr::findPattern(CirGate* g, vector<bool>& isUpdate) {
             } else {
                 g->pattern = (fanin0 & fanin1);
             }
-            // if (flag)
-            //     cout << g->id << ": " << g->pattern << " vs negate: " << ~g->pattern << endl;
-            // cout << " ---> fanin0: (" << g->fanin0id << ") " << fanin0 << " fanin1: (" << g->fanin1id << ") " << fanin1 << endl;
             return true;
         } else {
             return false;
@@ -315,24 +255,6 @@ void CirMgr::simulate64times() {
             --i;
         }
     }
-
-    // old way
-    // size_t OriginGroupNum = SimGroups.size();
-    // for (int times = 0; times < 32; ++times) {
-    //     for (size_t i = 0; i < OriginGroupNum; ++i) {
-    //         GateList temp;
-    //         bool head_bitValue = (SimGroups[i][0]->pattern >> times) & 1;
-    //         for (size_t j = 1; j < SimGroups[i].size(); ++j) {
-    //             bool bitValue = (SimGroups[i][j]->pattern >> times) & 1;
-    //             if (bitValue != head_bitValue) {
-    //                 temp.push_back(SimGroups[i][j]);
-    //                 SimGroups[i].erase(SimGroups[i].begin() + j);
-    //             }
-    //         }
-    //         if (!temp.empty())
-    //             SimGroups.push_back(temp);
-    //     }
-    // }
 }
 
 void CirMgr::writeLog() {
@@ -356,4 +278,133 @@ void CirMgr::writeLog() {
         *_simLog << "\n";
         ++currWriteLine;
     }
+}
+
+void CirMgr::findNecessary(CirGate* g, set<int>& set) {
+    assert(g != 0);
+    if (g->type == PI_GATE) {
+        set.insert(id2Idx[g->getId()]);
+        return;
+    }
+    if (g->type == PO_GATE) {
+        findNecessary(all[g->fanin0id], set);
+        return;
+    }
+    // when g = 1 -> care both fanin
+    if ((g->pattern & 1) == 1) {
+        findNecessary(all[g->fanin0id], set);
+        findNecessary(all[g->fanin1id], set);
+    }
+    // g = 0 -> care about zero side
+    else {
+        bool fanin0Value = (all[g->fanin0id]->pattern & 1) == 1 ? true : false;
+        if (g->fanin0cp) fanin0Value = !fanin0Value;
+        bool fanin1Value = (all[g->fanin1id]->pattern & 1) == 1 ? true : false;
+        if (g->fanin1cp) fanin1Value = !fanin1Value;
+
+        assert(!(fanin1Value && fanin0Value));
+
+        if (fanin0Value == 0) {
+            findNecessary(all[g->fanin0id], set);
+        }else{
+            findNecessary(all[g->fanin1id], set);
+        }
+    }
+}
+
+vector<set<int>> CirMgr::getNecessary(const vector<int>& assign_Input, const vector<int>& assign_Output) {
+    double inputSize = assign_Input.size();
+    int outputSize = assign_Output.size();
+    assert(inputSize == PIs.size());
+    assert(outputSize == POs.size());
+
+    uint64_t zero, one;
+    zero = 0;
+    for (int i = 0; i < 64; ++i) {
+        one = one << 1;
+        one += 1;
+    }
+
+    inputPattern.clear();
+    inputPattern = vector<uint64_t>(PIs.size());
+
+    for (int i = 0; i < inputSize; ++i) {
+        if (assign_Input[i] == 0)
+            inputPattern[i] = zero;
+        else if (assign_Input[i] == 1)
+            inputPattern[i] = one;
+        else
+            assert(0);
+    }
+    // cout << "Origin Input:";
+    // for (int i = 0; i < inputSize; ++i) cout << assign_Input[i] << " ";
+    // cout << "Origin Output:";
+    // for (int i = 0; i < outputSize; ++i) cout << assign_Output[i] << " ";
+    // cout << endl;
+    simulate64times();
+    vector<set<int>> necessarys;
+    set<int> necessry;
+    for (int i = 0; i < POs.size(); ++i) {
+        // cout << "output: " << i << " , now pattern: " << (POs[i]->pattern & 1) << endl;
+        necessry.clear();
+        findNecessary(POs[i], necessry);
+        necessarys.push_back(necessry);
+
+    }
+    return necessarys;
+
+    ///  ignore --------------------
+    // for (int i = 0; i < POs.size(); ++i) {
+    //     if (POs[i]->pattern & 1 != assign_Output[i]) {
+    //         // cout << "not right!" << endl;
+    //         assert(0);
+    //     }
+    // }
+    // cout << "Origin Input:";
+    // for (int i = 0; i < inputSize; ++i) cout << assign_Input[i] << " ";
+    // cout << endl;
+    // // cout << " right!" << endl;
+    // // i = the number of inputpattern, should flip every input once
+    // for (int i = 0; i < ceil(inputSize / 64); ++i) {
+    //     // pos = the position should be flip
+
+    //     // prepare simulate inputpattern
+    //     for (int pos = 0; pos < 64; ++pos) {
+    //         if (i * 63 + pos >= inputSize) {
+    //             break;
+    //         }
+    //         uint64_t flipHelper = 0;
+    //         flipHelper += 1;
+    //         flipHelper = flipHelper << pos;
+    //         inputPattern[i * 64 + pos] = inputPattern[i * 64 + pos] ^ flipHelper;
+    //     }
+
+    //     for (int j = 0; j < inputSize; ++j) {
+    //         for (int k = 0; k < inputSize; ++k) {
+    //             cout << ((inputPattern[k] >> j) & 1) << " ";
+    //         }
+    //         cout << endl;
+    //     }
+    //     simulate64times();
+
+    //     // verify the necessary
+    //     //  check if the output also flip -> is necessary input
+    //     for (int pos = 0; pos < 64; ++pos) {
+    //         for (int j = 0; j < POs.size(); ++j) {
+    //             if (pos + 63 * i >= inputSize) {
+    //                 // cout << "partial end" << endl;
+    //                 return necessary;
+    //             }
+    //             int outputValue = ((POs[j]->pattern >> pos) & 1);
+    //             if (outputValue != assign_Output[j]) {
+    //                 // find necessary input
+    //                 necessary[j].insert(pos + 63 * i);
+    //                 // cout << "The output " << j << " is depents on " << pos + 63 * i << endl;
+    //             }
+    //         }
+    //     }
+    //     // reset
+    //     inputPattern = originInputPattern;
+    // }
+    ///  ignore --------------------
 }

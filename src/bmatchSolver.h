@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
-#include <set>
 #include <unordered_map>
 
 #include "./SAT/test/sat.h"
@@ -153,7 +152,7 @@ class Order
             // return 0 if no Pre
             Order* pre = assign_pre;
             if (pre != 0) {
-                assert(assign_pre.en);
+                assert(assign_pre->en);
                 pre->assign_nxt = order_nxt;
             }
 
@@ -188,13 +187,11 @@ class Order
                     if (pre == 0) return 0;
                     else return pre;
                 } else { // i.e. assign_nxt->isForbid(), thus we should go to next Order in chain
-                    assert(!assign_nxt->is_assign());
                     assert(assign_nxt->en);
                     assign_nxt = assign_nxt->order_nxt;
                 }
             }
             // i.e. assign_nxt is new assignment
-            assert(!assign_nxt->is_assign());
             assert(assign_nxt->en);
             assign_nxt->assign(this);
             return assign_nxt;
@@ -386,10 +383,9 @@ class OutPortMgr
 
             vector<vector<Order*> > order_sort; // group of valid assignment
             if (is_one_to_one) {
-                assert(f_sort[0].second.nofSupport() < g_sort[0].second.nofSupport());
                 size_t cut = 0; // cut is the end of previous group
                 for (size_t i = 1; i < f_sort.size(); ++i) {
-                    assert(f_sort[i].second.nofSupport() < g_sort[i].second.nofSupport());    // if fail, means not one to one
+                    // assert(f_sort[i].second.nofSupport() < g_sort[i].second.nofSupport());    // if fail, means not one to one
                     // cout << "gen3 " << i << endl;
                     if (f_sort[i - 1].second.nofSupport() > g_sort[i].second.nofSupport()) {
                         // group found, between [cut, i)
@@ -405,7 +401,7 @@ class OutPortMgr
                 }
                 // cout << "gen2" << endl;
                 // cout << cut << endl;
-                assert(f_sort[f_sort.size()].second.nofSupport() < g_sort[f_sort.size()].second.nofSupport());
+                // assert(f_sort[f_sort.size()].second.nofSupport() < g_sort[f_sort.size()].second.nofSupport());
 
                 // final group should added
                 for (size_t i_g = cut; i_g < g_sort.size(); ++i_g) {
