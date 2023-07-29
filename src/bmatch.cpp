@@ -1,7 +1,8 @@
 
 #include <stdio.h>
 
-#include "./SAT/test/sat.h"
+// #include "./SAT/test/sat.h"
+#include "./SAT/sat.h"
 #include "bmatchSolver.h"
 extern "C" {
 #include "aiger.h"
@@ -332,15 +333,6 @@ void write_aig() {
         cout << "success print_supp !" << endl;
     }
 
-    // func support
-    sprintf(Command, "print_unate -v");
-    if (Cmd_CommandExecute(pAbc, Command)) {
-        fprintf(stdout, "Cannot execute command \"%s\".\n", Command);
-        return;
-    } else {
-        cout << "success print_supp !" << endl;
-    }
-
     sprintf(Command, "read_verilog %s", "2.v");
     if (Cmd_CommandExecute(pAbc, Command)) {
         fprintf(stdout, "Cannot execute command \"%s\".\n", Command);
@@ -375,14 +367,6 @@ void write_aig() {
 
     // func support
     sprintf(Command, "print_supp -w");
-    if (Cmd_CommandExecute(pAbc, Command)) {
-        fprintf(stdout, "Cannot execute command \"%s\".\n", Command);
-        return;
-    } else {
-        cout << "success print_supp !" << endl;
-    }
-
-    sprintf(Command, "print_unate -v");
     if (Cmd_CommandExecute(pAbc, Command)) {
         fprintf(stdout, "Cannot execute command \"%s\".\n", Command);
         return;
@@ -573,7 +557,7 @@ int main(int argc, char* argv[]) {
         bmatchSolver.busConstraint();
         
     bmatchSolver.run();
-
+    cout << "finish run" << endl;
     // bmatchSolver.testOutputMgr();
 
 
@@ -584,4 +568,5 @@ int main(int argc, char* argv[]) {
     remove("circuit_2.aag");
     remove("name");
     remove("support");
+    cout << "program done" << endl;
 }

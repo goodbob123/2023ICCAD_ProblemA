@@ -12,7 +12,8 @@
 #include <sstream>
 #include <vector>
 
-#include "../SAT/test/sat.h"
+// #include "../SAT/test/sat.h"
+#include "../SAT/sat.h"
 #include "cirGate.h"
 #include "cirMgr.h"
 
