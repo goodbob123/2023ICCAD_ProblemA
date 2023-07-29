@@ -362,7 +362,7 @@ class Comparator {
             // if (a_span < b_span) return true;
             if (a->support_span_atri == b->support_span_atri) {
                 if (a->support_atri == b->support_atri) {
-                    return a->bus_atri || !b->bus_atri;
+                    return a->bus_atri && !b->bus_atri;
                 } else return a->support_atri < b->support_atri;
             } else return a->support_span_atri < b->support_span_atri;
 
@@ -609,6 +609,7 @@ class OutPortMgr
                 grouping();
             }
 
+            // cout << "gen 0" <<endl;
             for (size_t i_g = 0; i_g < g_sort.size(); ++i_g) {
                 for (size_t i_f = 0; i_f < f_sort.size(); ++i_f) {
                     pair<size_t, Port> fp = f_sort[i_f];
@@ -756,6 +757,7 @@ class OutPortMgr
             set<int> gbusport = gbus->getBusPort();
             for (set<int>::iterator fitr = fbusport.begin(); fitr != fbusport.end(); ++fitr) {
                 for (set<int>::iterator gitr = gbusport.begin(); gitr != gbusport.end(); ++gitr) {
+                    cout << "forbid " << *gitr << " " << *fitr << endl;
                     assign_current->updateForbidOrder(&order_map[*gitr][*fitr]);
                 }
             }
