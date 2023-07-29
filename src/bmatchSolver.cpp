@@ -584,7 +584,7 @@ void BMatchSolver::run() {
             if (negation[i][end] == false) canPos = true;
             if (canPos && canNeg) break;
         }
-        assert(canPos || canNeg || negation.size == 0);
+        assert(canPos || canNeg || negation.size() == 0);
         if (!canPos) outputPairs[end]->failPos();
         if (!canNeg) outputPairs[end]->failNeg();
         

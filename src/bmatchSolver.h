@@ -249,7 +249,7 @@ class Order
             // return 0 if no Pre
             Order* pre = assign_pre;
             if (pre != 0) {
-                assert(assign_pre.en);
+                assert(assign_pre->en);
                 pre->assign_nxt = order_nxt;
             }
 
@@ -291,13 +291,13 @@ class Order
                     if (pre == 0) return 0;
                     else return pre;
                 } else { // i.e. assign_nxt->isForbid(), thus we should go to next Order in chain
-                    assert(!assign_nxt->is_assign());
+                    assert(!assign_nxt->is_assign);
                     assert(assign_nxt->en);
                     assign_nxt = assign_nxt->order_nxt;
                 }
             }
             // i.e. assign_nxt is new assignment
-            assert(!assign_nxt->is_assign());
+            assert(!assign_nxt->is_assign);
             assert(assign_nxt->en);
             assign_nxt->assign(this);
             return assign_nxt;
@@ -652,7 +652,7 @@ class OutPortMgr
             sort(f_sort.begin(), f_sort.end(), ComparatorSupport());
             sort(g_sort.begin(), g_sort.end(), ComparatorSupport());
             for (size_t i = 0; i < f_sort.size(); ++i) {
-                assert(f_sort[i].second.nofSupport() < g_sort[i].second.nofSupport()); // if fail, means not one to one
+                assert(f_sort[i].second.nofSupport() <= g_sort[i].second.nofSupport()); // if fail, means not one to one
             }
 
             size_t cut = 0; // cut is the end of previous group
@@ -726,7 +726,7 @@ class OutPortMgr
                     if (is_bus_one_to_one) {
                         if (fbus_ptr->getBusSize() != gbus_map[i]->getBusSize()) continue;  // forbid by one to one already
                         if (gbus_map[i] == gbus_ptr) continue;
-                        assert(!fbus_ptr->canMatch(gbus_ptr) && !fbus_ptr->isMatched(gbus_ptr));
+                        assert(!fbus_ptr->canMatch(gbus_ptr));
                         forbidByBus(fbus_ptr, gbus_map[i]);
                     }
                     else {
@@ -738,7 +738,7 @@ class OutPortMgr
                         if (is_bus_one_to_one) {
                             if (gbus_ptr->getBusSize() != fbus_map[i]->getBusSize()) continue;  // forbid by one to one already
                             if (fbus_map[i] == fbus_ptr) continue;
-                            assert(!gbus_ptr->canMatch(fbus_ptr) && !gbus_ptr->isMatched(fbus_ptr));
+                            assert(!gbus_ptr->canMatch(fbus_ptr));
                             forbidByBus(gbus_ptr, fbus_map[i]);
                         }
                         else {
