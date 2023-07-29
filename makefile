@@ -79,5 +79,5 @@ $(TARGET): $(OBJS) ./lib/libabc.a
 
 clean:
 	rm -rf $(OBJS) $(TARGET)
-	rm -rf match support name *.aig *.aag ./src/SAT/glucose/*/*.o
+	rm -rf match support name *.aig *.aag 
 	rm -rf CAD_testdata/case*/match CAD_testdata/case*/*.aag temp
