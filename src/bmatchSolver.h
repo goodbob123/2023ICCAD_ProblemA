@@ -356,7 +356,7 @@ class Comparator {
     // cmp num Support
     // since used in OutPortMgr, Port is stored as second of pair
     public:
-        bool operator() (Order* a, Order* b) {
+        bool operator() (const Order* a, const Order* b) {
             // todo
             // float a_span = float(a.support_span_atri) / float(a.support_atri);
             // float b_span = float(b.support_span_atri) / float(b.support_atri);
@@ -368,19 +368,19 @@ class Comparator {
             } else return a->support_span_atri < b->support_span_atri;
 
         }
-        bool operator() (set<int>& a, set<int>& b) {
+        bool operator() (const set<int>& a, const set<int>& b) {
             return a.size() < b.size();
         }
 };
 class ComparatorSupport {
     public:
-        bool operator() (pair<size_t, Port>& a, pair<size_t, Port>& b) {
+        bool operator() (const pair<size_t, Port>& a, const pair<size_t, Port>& b) {
             return a.second.nofSupport() > b.second.nofSupport();
         }
 };
 class ComparatorBinate {
     public:
-        bool operator() (pair<size_t, Port>& a, pair<size_t, Port>& b) {
+        bool operator() (const pair<size_t, Port>& a, const pair<size_t, Port>& b) {
             return false; // todo
             // return a.second.nofSupport() > b.second.nofSupport();
         }
