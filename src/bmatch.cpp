@@ -552,10 +552,10 @@ int main(int argc, char* argv[]) {
     bmatchSolver.printInfo();
 
     int temp;
-    cerr << "Enter 1 for bus constraint: ";
-    cin >> temp;
-    if (temp == 1)
-        bmatchSolver.busConstraint();
+    //cerr << "Enter 1 for bus constraint: ";
+    //cin >> temp;
+    //if (temp == 1)
+        //bmatchSolver.busConstraint();
         
     bmatchSolver.run();
     cout << "finish run" << endl;
