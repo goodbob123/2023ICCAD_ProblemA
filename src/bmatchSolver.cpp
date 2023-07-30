@@ -1247,15 +1247,15 @@ bool BMatchSolver::miterSolve() {
         vector<Lit> lits;
 
         // partial assignment
-        vector<int> assign_x, assign_y, assign_f, assign_g;
-        vector<set<int>> necessary_f, necessary_g;
-        for (int i = 0; i < x.size(); ++i) assign_x.push_back(miterSolver.getValue(x[i].getVar()));
-        for (int i = 0; i < y.size(); ++i) assign_y.push_back(miterSolver.getValue(y[i].getVar()));
-        for (int i = 0; i < f.size(); ++i) assign_f.push_back(miterSolver.getValue(f[i].getVar()));
-        for (int i = 0; i < g.size(); ++i) assign_g.push_back(miterSolver.getValue(g[i].getVar()));
+        // vector<int> assign_x, assign_y, assign_f, assign_g;
+        // vector<set<int>> necessary_f, necessary_g;
+        // for (int i = 0; i < x.size(); ++i) assign_x.push_back(miterSolver.getValue(x[i].getVar()));
+        // for (int i = 0; i < y.size(); ++i) assign_y.push_back(miterSolver.getValue(y[i].getVar()));
+        // for (int i = 0; i < f.size(); ++i) assign_f.push_back(miterSolver.getValue(f[i].getVar()));
+        // for (int i = 0; i < g.size(); ++i) assign_g.push_back(miterSolver.getValue(g[i].getVar()));
 
-        necessary_f = c1->getNecessary(assign_x, assign_f);
-        necessary_g = c2->getNecessary(assign_y, assign_g);
+        // necessary_f = c1->getNecessary(assign_x, assign_f);
+        // necessary_g = c2->getNecessary(assign_y, assign_g);
 
         for (int i = 0; i < fStar.size(); ++i) {
             for (int j = 0; j < f.size(); ++j) {
@@ -1265,16 +1265,16 @@ bool BMatchSolver::miterSolve() {
                 } else {
                     lits.push_back(~Lit(d[i][j].matrixVar));
                 }
-                cout << "The f[" << j << "] pattern: " << miterSolver.getValue(f[j].getVar()) << " supprot: ";
-                for (auto& s : f[j].supports) cout << s << " ";
-                cout << ", necessary : ";
-                for (auto& s : necessary_f[j]) cout << s << " ";
-                cout << endl;
-                cout << "The g[" << i << "] supprot: ";
-                for (auto& s : g[i].supports) cout << s << " ";
-                cout << ", necessary : ";
-                for (auto& s : necessary_g[i]) cout << s << " ";
-                cout << endl;
+                // cout << "The f[" << j << "] pattern: " << miterSolver.getValue(f[j].getVar()) << " supprot: ";
+                // for (auto& s : f[j].supports) cout << s << " ";
+                // cout << ", necessary : ";
+                // for (auto& s : necessary_f[j]) cout << s << " ";
+                // cout << endl;
+                // cout << "The g[" << i << "] supprot: ";
+                // for (auto& s : g[i].supports) cout << s << " ";
+                // cout << ", necessary : ";
+                // for (auto& s : necessary_g[i]) cout << s << " ";
+                // cout << endl;
                 // TODO: and or or
                 for (int k = 0; k < y.size(); ++k) {
                     if (!g[i].isSupport(k))
@@ -1541,6 +1541,68 @@ void BMatchSolver::assumeInputRedundnatFromOutput(const set<int>& input1, const 
             // matrixSolver.assumeProperty(inputVarMatrix[*it][j], false);
             matrixSolver.assumeProperty(a[*it][j].matrixVar, false);
             matrixSolver.assumeProperty(b[*it][j].matrixVar, false);
+        }
+    }
+}
+
+void BMatchSolver::simulate() {
+    cout << "start to simulate" << endl;
+    vector<vector<int>> assign_Input_x, assign_Output_f;
+    vector<vector<int>> assign_Input_y, assign_Output_g;
+    vector<vector<set<int>>> necessarys_f, necessarys_g;
+    vector<Lit> lits;
+    c1->randomSim2Necessary(assign_Input_x, assign_Output_f, necessarys_f);
+    c2->randomSim2Necessary(assign_Input_y, assign_Output_g, necessarys_g);
+
+    // total simulate 64 times (0~63)
+    for (int times = 0; times < 64; ++times) {
+        for (int i = 0; i < fStar.size(); ++i) {
+            for (int j = 0; j < f.size(); ++j) {
+                // if (times == 0) {
+                //     cout << "The f[" << j << "] pattern: " << assign_Output_f[times][j] << " supprot: ";
+                //     for (auto& s : f[j].supports) cout << s << " ";
+                //     cout << ", necessary : ";
+                //     for (auto& s : necessarys_f[times][j]) cout << s << " ";
+                //     cout << endl;
+                //     cout << "The g[" << i << "] pattern: " << assign_Output_g[times][i] << " supprot: ";
+                //     for (auto& s : g[i].supports) cout << s << " ";
+                //     cout << ", necessary : ";
+                //     for (auto& s : necessarys_g[times][i]) cout << s << " ";
+                //     cout << endl;
+                // }
+                // A(x_l= y_k) & B -> f!=g
+                // f=g -> ~A or ~B
+                // ( !(f=g) + ~A(x_l=y_k) + ~B)
+
+                if (assign_Output_g[times][i] !=
+                    assign_Output_f[times][j]) {
+                    // cout << "( ~c[" << i << "][" << j << "]";
+                    lits.push_back(~Lit(c[i][j].matrixVar));
+                } else {
+                    // cout << "( ~d[" << i << "][" << j << "]";
+                    lits.push_back(~Lit(d[i][j].matrixVar));
+                }
+
+                for (int k = 0; k < y.size(); ++k) {
+                    if (!necessarys_g[times][i].count(k))
+                        continue;
+                    for (int l = 0; l < x.size(); ++l) {  // +1 or not
+                        if (!necessarys_f[times][j].count(l))
+                            continue;
+                        if (assign_Input_y[times][k] !=
+                            assign_Input_x[times][l]) {
+                            // cout << "+ a[" << k << "][" << l << "]";
+                            lits.push_back(Lit(a[k][l].matrixVar));
+                        } else {
+                            // cout << "+ b[" << k << "][" << l << "]";
+                            lits.push_back(Lit(b[k][l].matrixVar));
+                        }
+                    }
+                }
+                // cout << ")" << endl;
+                matrixSolver.addCNF(lits);
+                lits.clear();
+            }
         }
     }
 }

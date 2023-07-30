@@ -280,34 +280,35 @@ void CirMgr::writeLog() {
     }
 }
 
-void CirMgr::findNecessary(CirGate* g, set<int>& set) {
+void CirMgr::findNecessary(CirGate* g, set<int>& set, int& patternShift) {
     assert(g != 0);
     if (g->type == PI_GATE) {
         set.insert(id2Idx[g->getId()]);
         return;
     }
     if (g->type == PO_GATE) {
-        findNecessary(all[g->fanin0id], set);
+        findNecessary(all[g->fanin0id], set, patternShift);
         return;
     }
     // when g = 1 -> care both fanin
-    if ((g->pattern & 1) == 1) {
-        findNecessary(all[g->fanin0id], set);
-        findNecessary(all[g->fanin1id], set);
+    if (((g->pattern >> patternShift) & 1) == 1) {
+        findNecessary(all[g->fanin0id], set, patternShift);
+        findNecessary(all[g->fanin1id], set, patternShift);
     }
     // g = 0 -> care about zero side
     else {
-        bool fanin0Value = (all[g->fanin0id]->pattern & 1) == 1 ? true : false;
+        bool fanin0Value = ((all[g->fanin0id]->pattern >> patternShift) & 1) == 1 ? true : false;
         if (g->fanin0cp) fanin0Value = !fanin0Value;
-        bool fanin1Value = (all[g->fanin1id]->pattern & 1) == 1 ? true : false;
+        bool fanin1Value = ((all[g->fanin1id]->pattern >> patternShift) & 1) == 1 ? true : false;
         if (g->fanin1cp) fanin1Value = !fanin1Value;
 
         assert(!(fanin1Value && fanin0Value));
 
         if (fanin0Value == 0) {
-            findNecessary(all[g->fanin0id], set);
-        }else{
-            findNecessary(all[g->fanin1id], set);
+            findNecessary(all[g->fanin0id], set, patternShift);
+        } else {
+            // if (fanin1Value == 0) {
+            findNecessary(all[g->fanin1id], set, patternShift);
         }
     }
 }
@@ -344,12 +345,12 @@ vector<set<int>> CirMgr::getNecessary(const vector<int>& assign_Input, const vec
     simulate64times();
     vector<set<int>> necessarys;
     set<int> necessry;
+    int patternShift = 0;
     for (int i = 0; i < POs.size(); ++i) {
         // cout << "output: " << i << " , now pattern: " << (POs[i]->pattern & 1) << endl;
         necessry.clear();
-        findNecessary(POs[i], necessry);
+        findNecessary(POs[i], necessry, patternShift);
         necessarys.push_back(necessry);
-
     }
     return necessarys;
 
@@ -407,4 +408,44 @@ vector<set<int>> CirMgr::getNecessary(const vector<int>& assign_Input, const vec
     //     inputPattern = originInputPattern;
     // }
     ///  ignore --------------------
+}
+
+
+// random simulate and return PI/PO/NecessaryPI
+void CirMgr::randomSim2Necessary(vector<vector<int>>& assign_Input, vector<vector<int>>& assign_Output, vector<vector<set<int>>>& necessarys_64bit) {
+    random_device rd;
+    mt19937_64 generator(rd());
+    uniform_int_distribution<uint64_t> distribution(0, numeric_limits<uint64_t>::max());
+    inputPattern.clear();
+    for (size_t i = 0; i < PIs.size(); ++i) {
+        inputPattern.push_back(distribution(generator));
+    }
+    simulate64times();
+
+    vector<set<int>> necessarys;
+    set<int> necessry;
+    vector<int> pattern;
+    for (int patternShift = 0; patternShift < 64; ++patternShift) {
+        necessarys.clear();
+        for (int i = 0; i < POs.size(); ++i) {
+            necessry.clear();
+            findNecessary(POs[i], necessry, patternShift);
+            necessarys.push_back(necessry);
+        }
+        necessarys_64bit.push_back(necessarys);
+
+        // record output assign
+        pattern.clear();
+        for (int i = 0; i < POs.size(); ++i) {
+            pattern.push_back(((POs[i]->pattern >> patternShift) & 1));
+        }
+        assign_Output.push_back(pattern);
+
+        // record input assign
+        pattern.clear();
+        for (int i = 0; i < PIs.size(); ++i) {
+            pattern.push_back(((inputPattern[i] >> patternShift) & 1));
+        }
+        assign_Input.push_back(pattern);
+    }
 }

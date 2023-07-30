@@ -785,6 +785,7 @@ class BMatchSolver {
     void printSupport(const vector<Port>& portTarget, const vector<Port>& portInv) const;
     void busConstraint();
     void testOutputMgr();
+    void simulate();
 
    protected:
     void genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aag2);

@@ -82,8 +82,9 @@ class CirMgr {
     // void coverage(CirGate *g);
     void coverageHelper(CirGate* g, int& coverage, vector<int>& supports);
     void getSupportCoverageInfo(vector<int> &allCoverage, vector<vector<int>> &allSupports);
-    void findNecessary(CirGate *g, set<int> &set);
+    void findNecessary(CirGate *g, set<int> &set, int& patternShift);
     vector<set<int>> getNecessary(const vector<int> &, const vector<int> &);
+    void randomSim2Necessary(vector<vector<int>>& , vector<vector<int>>& , vector<vector<set<int>>>& );
     void showInfo();
 
     // update Function
