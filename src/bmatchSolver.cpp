@@ -170,9 +170,9 @@ void BMatchSolver::inputPreprocess() {
             int diff = ity->second.size() - itx->second.size();
             sum += diff;
             cerr << "nof_support:" << setw(3) << ity->first << " , diff:" <<  diff << endl;
-            itx ++;
-            ity ++;
-            continue;
+            // itx ++;
+            // ity ++;
+            // continue;
         }
         twoWaySupport(itx->second, ity->second);
         itx ++;
@@ -384,8 +384,8 @@ void BMatchSolver::outputPreprocess() {
     cerr << "outputPreprocess start..." << endl;
     for (int j = 0; j < f.size(); ++j) {
         for (int i = 0; i < g.size(); ++i) {
-            // if (f[j].nofSupport() > g[i].nofSupport()) {
-            if (f[j].nofSupport() != g[i].nofSupport()) {
+            if (f[j].nofSupport() > g[i].nofSupport()) {
+            // if (f[j].nofSupport() != g[i].nofSupport()) {
                 // outputSolver.assertProperty(outputC[i][j], false);
                 // outputSolver.assertProperty(outputD[i][j], false);
                 outputSolver.assertProperty(outputVarMatrix[i][j], false);
@@ -451,7 +451,6 @@ void BMatchSolver::run() {
     cout << "generate output heuristic order" << endl;
     outMgr.init(f, g, fBus, gBus);
     cerr << "start run..." << endl;
-    //scoreGte((2));
     // for heuristic
     bool toStep = true;
     Order* cur = outMgr.getHead();
@@ -472,7 +471,6 @@ void BMatchSolver::run() {
     //     for (auto v: cv) cout << v.matrixVar << " ";
     //     cout << endl;
     // }
-    scoreGte((g.size() + f.size()));
     while (1) {
         int execTime = (clock() - START) / CLOCKS_PER_SEC;
         if (execTime - prevTime >= 10) {
@@ -1189,7 +1187,6 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
                                            true);
             }
         }
-     
         if (miterSolve()) {  // UNSAT -> find a valid mapping
             // Update current answer and block answer
             return true;
@@ -1235,7 +1232,6 @@ bool BMatchSolver::miterSolve() {
         if (score > bestScore) {
             outputAns();
             bestScore = score;
-            scoreGte(score + 1);
         }
         cout << "Score: " << score << ", Best Score: " << bestScore << endl;
 
@@ -1267,6 +1263,11 @@ bool BMatchSolver::miterSolve() {
                         } else {
                             lits.push_back(Lit(b[k][l].matrixVar));
                         }
+                    }
+                    if (miterSolver.getValue(y[k].getVar()) != 0) {
+                        lits.push_back(Lit(a[k][x.size()].matrixVar));
+                    } else {
+                        lits.push_back(Lit(b[k][x.size()].matrixVar));
                     }
                 }
                 matrixSolver.addCNF(lits);
@@ -1427,23 +1428,25 @@ void BMatchSolver::printSupport(const vector<Port>& portTarget, const vector<Por
 
 void BMatchSolver::twoWaySupport(const set<int>& oneIndice, const set<int>& twoIndice) {
     // return ;
-
     for (int i = 0; i < y.size(); ++i) {
         if (twoIndice.find(i) == twoIndice.end())
             continue;
-        for (int j = 0; j < x.size() + 1; ++j) {
+        for (int j = 0; j < x.size(); ++j) {
             if (oneIndice.find(j) == oneIndice.end()) {
                 matrixSolver.assertProperty(a[i][j].matrixVar, false);
                 matrixSolver.assertProperty(b[i][j].matrixVar, false);
             }
         }
+        if (oneIndice.size() == twoIndice.size()) {
+            matrixSolver.assertProperty(a[i][x.size()].matrixVar, false);
+            matrixSolver.assertProperty(b[i][x.size()].matrixVar, false);
+        }
     }
-    cerr << endl;
 }
 
 void BMatchSolver::assumeMo() {
     outputSolver.assumeRelease();
-    cerr << "Assume output port matching: ";
+    cerr << "Assume output port matching (ex: 5 0 3 1 -1 means map (f,g) = (5,0) and (3,1)): " << endl;
     int temp;
     int ff, gg;
     set<pair<int, int>> matchVar;
@@ -1518,6 +1521,31 @@ void BMatchSolver::assumeInputRedundnatFromOutput(const set<int>& input1, const 
             // matrixSolver.assumeProperty(inputVarMatrix[*it][j], false);
             matrixSolver.assumeProperty(a[*it][j].matrixVar, false);
             matrixSolver.assumeProperty(b[*it][j].matrixVar, false);
+        }
+        if (input1.size() == input2.size()) {
+            matrixSolver.assumeProperty(a[*it][x.size()].matrixVar, false);
+            matrixSolver.assumeProperty(b[*it][x.size()].matrixVar, false);
+        }
+    }
+}
+
+void BMatchSolver::interactiveSolve() {
+    assumeMo();
+    while(1) {
+        vector<Var> outputPairs;
+        bool result = outputSolve(outputPairs);
+        if (!result) {
+            cerr << "No output matrix found!" << endl;
+            assumeMo();
+            continue;
+        }
+        set<Var> currentResult(outputPairs.begin(), outputPairs.end());
+        if (isValidMo(currentResult)) {
+            cerr << "Find valid input matrix!" << endl;
+            assumeMo();
+        }
+        else {
+            cerr << "No input matrix found!" << endl;
         }
     }
 }
