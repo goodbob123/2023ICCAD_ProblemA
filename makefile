@@ -1,6 +1,7 @@
 PP := g++
 CC := gcc
-CFLAGS := -g -O3 -DNDEBUG
+CFLAGS := -g -O3 -DNDEBUG 
+# CFLAGS := -g -O0 -DINCREMENTAL
 LDFLAGS := -lm -ldl -lreadline -lpthread
 
 # modify for glucose

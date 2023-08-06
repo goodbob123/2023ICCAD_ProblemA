@@ -390,7 +390,7 @@ class OutPortMgr
 {
     public:
         OutPortMgr() {}
-    
+        friend class BMatchSolver;
         void init(vector<Port>& _f, vector<Port>& _g, Buses& _fBus, Buses& _gBus) {
             fptr = &_f;
             gptr = &_g;
@@ -786,6 +786,17 @@ class BMatchSolver {
     void busConstraint();
     void testOutputMgr();
     void simulate();
+    void interactiveSolve();
+    void printDebug() {
+            return;
+            for (int i = 0; i < debug.size(); ++i) {
+                for (int j = 0; j < debug[0].size(); ++j) {
+                    cerr << debug[i][j] << " ";
+                }
+                cerr << endl;
+            }
+            cerr << endl;
+    }
 
    protected:
     void genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aag2);
@@ -856,4 +867,5 @@ class BMatchSolver {
 
     // file
     char* file_match;
+    vector<vector<bool>> debug;
 };

@@ -550,15 +550,23 @@ int main(int argc, char* argv[]) {
     bmatchSolver.readBusInfo(bus, true);
     bmatchSolver.readBusInfo(bus, false);
     bmatchSolver.printInfo();
-
     int temp;
-    cerr << "Enter 1 for bus constraint: ";
-    cin >> temp;
-    if (temp == 1)
-        bmatchSolver.busConstraint();
-        
-    bmatchSolver.run();
-    cout << "finish run" << endl;
+    bmatchSolver.busConstraint();
+    //cerr << "Enter 1 for bus constraint: ";
+    //cin >> temp;
+    //if (temp == 1)
+        //bmatchSolver.busConstraint();
+    
+    cerr << "Enter 1 for interactive mode: ";
+    int interactive;
+    cin >> interactive;
+    if (interactive == 1) {
+        bmatchSolver.interactiveSolve();
+    }
+    else {
+        bmatchSolver.run();
+        cout << "finish run" << endl;
+    }
     // bmatchSolver.testOutputMgr();
 
 
