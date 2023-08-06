@@ -736,18 +736,18 @@ class OutPortMgr
                         assert(false);
                         // todo
                     }
-                    for (size_t i = 0; i < fbus_map.size(); ++i) {
-                        if (is_bus_one_to_one) {
-                            if (gbus_ptr->getBusSize() != fbus_map[i]->getBusSize()) continue;  // forbid by one to one already
-                            if (fbus_map[i] == fbus_ptr) continue;
-                            assert(!gbus_ptr->canMatch(fbus_ptr));
-                            forbidByBus(gbus_ptr, fbus_map[i]);
-                        }
-                        else {
-                            cout << "not done yet" << endl;
-                            assert(false);
-                            // todo
-                        }
+                }
+                for (size_t i = 0; i < fbus_map.size(); ++i) {
+                    if (is_bus_one_to_one) {
+                        if (gbus_ptr->getBusSize() != fbus_map[i]->getBusSize()) continue;  // forbid by one to one already
+                        if (fbus_map[i] == fbus_ptr) continue;
+                        assert(!gbus_ptr->canMatch(fbus_ptr));
+                        forbidByBus(fbus_map[i], gbus_ptr);
+                    }
+                    else {
+                        cout << "not done yet" << endl;
+                        assert(false);
+                        // todo
                     }
                 }
             }
@@ -758,7 +758,7 @@ class OutPortMgr
             set<int> gbusport = gbus->getBusPort();
             for (set<int>::iterator fitr = fbusport.begin(); fitr != fbusport.end(); ++fitr) {
                 for (set<int>::iterator gitr = gbusport.begin(); gitr != gbusport.end(); ++gitr) {
-                    cout << "forbid " << *gitr << " " << *fitr << endl;
+                    cout << "forbid " << *fitr << " " << *gitr<< endl;
                     assign_current->updateForbidOrder(&order_map[*gitr][*fitr]);
                 }
             }
