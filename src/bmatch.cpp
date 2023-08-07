@@ -550,7 +550,7 @@ int main(int argc, char* argv[]) {
     bmatchSolver.readBusInfo(bus, false);
     bmatchSolver.printInfo();
     int temp;
-    bmatchSolver.busConstraint();
+    //bmatchSolver.busConstraint();
     //cerr << "Enter 1 for bus constraint: ";
     //cin >> temp;
     //if (temp == 1)
