@@ -790,16 +790,6 @@ class BMatchSolver {
     void busConstraint();
     void testOutputMgr();
     void interactiveSolve();
-    void printDebug() {
-        return;
-        for (int i = 0; i < debug.size(); ++i) {
-            for (int j = 0; j < debug[0].size(); ++j) {
-                cerr << debug[i][j] << " ";
-            }
-            cerr << endl;
-        }
-        cerr << endl;
-    }
 
    protected:
     void genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aag2);
@@ -870,5 +860,8 @@ class BMatchSolver {
 
     // file
     char* file_match;
-    vector<vector<bool>> debug;
+
+    size_t matrixSolverInstance;
+    size_t matrixSolverPeriodInstance;
+    double previousTime;
 };

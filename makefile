@@ -1,6 +1,6 @@
 PP := g++
 CC := gcc
-CFLAGS := -g -O3 -DNDEBUG
+CFLAGS := -g #-O3 -DNDEBUG
 LDFLAGS := -lm -ldl -lreadline -lpthread
 
 TARGET := bmatch

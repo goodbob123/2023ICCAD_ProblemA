@@ -1140,8 +1140,17 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
     // cout << "redundantInput_y: ";
     // for (const auto& s : redundantInput_y) cout << s << " ";
     // cout << endl;
+    matrixSolverInstance = 0;
+    matrixSolverPeriodInstance = 0;
+    previousTime = clock();
     while (1) {
-        cerr << ".";
+        matrixSolverInstance ++;
+        matrixSolverPeriodInstance ++;
+        if ((clock() - previousTime) / CLOCKS_PER_SEC >= 1) {
+            cerr << "\rMatrix Solver solve: " << setw(4) << matrixSolverPeriodInstance / ((clock() - previousTime) / CLOCKS_PER_SEC) << " /sec, total solve: " << setw(5) << matrixSolverInstance;
+            matrixSolverPeriodInstance = 0;
+            previousTime = clock();
+        }
         bool inputResult = matrixSolver.assumpSolve();
         if (!inputResult) {
             cout << "cannot find other input mapping" << endl;
