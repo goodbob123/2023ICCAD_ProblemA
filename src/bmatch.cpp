@@ -1,8 +1,8 @@
 
 #include <stdio.h>
 
-// #include "./SAT/test/sat.h"
-#include "./SAT/sat.h"
+#include "./SAT/test/sat.h"
+// #include "./SAT/sat.h"
 #include "bmatchSolver.h"
 extern "C" {
 #include "aiger.h"
@@ -547,12 +547,12 @@ int main(int argc, char* argv[]) {
     bmatchSolver.inputPreprocess();
     bmatchSolver.outputPreprocess();
     // for (int i = 0; i < 10; ++i)
-    //     bmatchSolver.simulate();
+    // bmatchSolver.simulate();
     bmatchSolver.readBusInfo(bus, true);
     bmatchSolver.readBusInfo(bus, false);
     bmatchSolver.printInfo();
     int temp;
-    bmatchSolver.busConstraint();
+    //bmatchSolver.busConstraint();
     //cerr << "Enter 1 for bus constraint: ";
     //cin >> temp;
     //if (temp == 1)

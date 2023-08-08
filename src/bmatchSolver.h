@@ -5,8 +5,8 @@
 #include <iostream>
 #include <unordered_map>
 
-// #include "./SAT/test/sat.h"
-#include "./SAT/sat.h"
+#include "./SAT/test/sat.h"
+//#include "./SAT/sat.h"
 #include "./cir/cirGate.h"
 #include "./cir/cirMgr.h"
 
@@ -167,9 +167,12 @@ class Order
             assign_pre = 0;
 
             grp = 0;
-            support_atri = fport_ptr->nofSupport() + gport_ptr->nofSupport();
+            // support_atri = fport_ptr->nofSupport() + gport_ptr->nofSupport();
+            support_atri = gport_ptr->nofSupport();
             support_span_atri = gport_ptr->nofSupport() - fport_ptr->nofSupport();
             bus_atri = (fBus_ptr->getBusSize() == gBus_ptr->getBusSize());
+            cone_span_atri = gport_ptr->getCoverage() - fport_ptr->getCoverage();
+            if (cone_span_atri < 0) cone_span_atri = -cone_span_atri;
         }
         friend class Comparator;
         friend class OutPortMgr;
@@ -346,7 +349,8 @@ class Order
 
         size_t grp;
         size_t support_atri;
-        size_t support_span_atri;
+        int support_span_atri;
+        int cone_span_atri;
         bool bus_atri;
 };
 
@@ -355,17 +359,16 @@ class Comparator {
     // cmp num Support
     // since used in OutPortMgr, Port is stored as second of pair
     public:
-        bool operator() (Order* a, Order* b) {
-            // todo
-            // float a_span = float(a.support_span_atri) / float(a.support_atri);
-            // float b_span = float(b.support_span_atri) / float(b.support_atri);
-            // if (a_span < b_span) return true;
-            if (a->support_span_atri == b->support_span_atri) {
-                if (a->support_atri == b->support_atri) {
-                    return a->bus_atri && !b->bus_atri;
-                } else return a->support_atri < b->support_atri;
-            } else return a->support_span_atri < b->support_span_atri;
-
+        bool operator() (const Order* a, const Order* b) {
+            assert(a->support_span_atri >= 0);
+            assert(b->support_span_atri >= 0);
+            if (a->support_atri == b->support_atri) {
+                if (a->support_span_atri == b->support_span_atri) {
+                    if (a->cone_span_atri == b->cone_span_atri) {
+                        return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
+                    } else return a->cone_span_atri < b->cone_span_atri;
+                } else return a->support_span_atri < b->support_span_atri;
+            } else return a->support_atri < b->support_atri;
         }
         bool operator() (set<int>& a, set<int>& b) {
             return a.size() < b.size();
@@ -787,16 +790,6 @@ class BMatchSolver {
     void testOutputMgr();
     void simulate();
     void interactiveSolve();
-    void printDebug() {
-            return;
-            for (int i = 0; i < debug.size(); ++i) {
-                for (int j = 0; j < debug[0].size(); ++j) {
-                    cerr << debug[i][j] << " ";
-                }
-                cerr << endl;
-            }
-            cerr << endl;
-    }
 
    protected:
     void genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aag2);
@@ -867,5 +860,8 @@ class BMatchSolver {
 
     // file
     char* file_match;
-    vector<vector<bool>> debug;
+
+    size_t matrixSolverInstance;
+    size_t matrixSolverPeriodInstance;
+    double previousTime;
 };

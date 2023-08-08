@@ -9,13 +9,12 @@
 #ifndef SAT_H
 #define SAT_H
 
-#include "./glucose/core/Solver.h"
+#include "Solver.h"
 #include <cassert>
 #include <iostream>
 #include <vector>
 
 using namespace std;
-using namespace Glucose;
 
 /********** MiniSAT_Solver **********/
 class SatSolver {
@@ -122,7 +121,7 @@ public:
   // commander encoding
   // ref:
   // http://www.cs.cmu.edu/~wklieber/papers/2007_efficient-cnf-encoding-for-selecting-1.pdf
-  void addOneHot(const vector<Lit> &v) {
+  void add_one_hot_constraint(const vector<Lit> &v) {
     vector<Lit> commander_lits = vector<Lit>(v.begin(), v.end());
     vector<Lit> new_commander_lits = vector<Lit>();
     vector<Lit> clause = vector<Lit>();
@@ -184,9 +183,9 @@ public:
           clause.push_back(new_commander_lit);
           clause.push_back(~commander_lits[i]);
           addCNF(clause);
-          clause[1] = ~commander_lits[i + 1];
+          clause.at(1) = ~commander_lits[i + 1];
           addCNF(clause);
-          clause[1] = ~commander_lits[i + 2];
+          clause.at(1) = ~commander_lits[i + 2];
           addCNF(clause);
         }
 
@@ -198,80 +197,7 @@ public:
       commander_lits.swap(new_commander_lits);
     }
 
-    _solver->addClause(commander_lits[0]);
-  }
-
-  // ref: https://people.eng.unimelb.edu.au/pstuckey/mddenc/mddenc.pdf
-  void addGte(vector<Lit> lits, int n) {
-    assert(lits.size() >= n);
-
-    vector<vector<Var>> BDD = vector<vector<Var>>(lits.size(), vector<Var>(n));
-
-    Var trueNode = newVar();
-    Var falseNode = newVar();
-
-    auto inRange = [&](int i, int j) {
-      return j >= std::max(i + n - int(lits.size()), 0) &&
-             j < std::min(i + 1, n);
-    };
-
-    for (int i = 0; i < lits.size(); ++i) {
-      for (int j = std::max(i + n - int(lits.size()), 0);
-           j < std::min(i + 1, n); ++j) {
-        BDD[i][j] = newVar();
-      }
-    }
-
-    vector<Lit> clause;
-    for (int i = 0; i < lits.size(); ++i) {
-      for (int j = std::max(i + n - int(lits.size()), 0);
-           j < std::min(i + 1, n); ++j) {
-        Lit x = lits[i];
-        Lit t = !inRange(i + 1, j + 1) ? Lit(trueNode) : Lit(BDD[i + 1][j + 1]);
-        Lit f = !inRange(i + 1, j) ? Lit(falseNode) : Lit(BDD[i + 1][j]);
-        Lit v = Lit(BDD[i][j]);
-
-        clause.clear();
-        clause.push_back(~t);
-        clause.push_back(~x);
-        clause.push_back(v);
-        addCNF(clause);
-
-        clause.clear();
-        clause.push_back(t);
-        clause.push_back(~x);
-        clause.push_back(~v);
-        addCNF(clause);
-
-        clause.clear();
-        clause.push_back(~f);
-        clause.push_back(x);
-        clause.push_back(v);
-        addCNF(clause);
-
-        clause.clear();
-        clause.push_back(f);
-        clause.push_back(x);
-        clause.push_back(~v);
-        addCNF(clause);
-
-        clause.clear();
-        clause.push_back(~t);
-        clause.push_back(~f);
-        clause.push_back(v);
-        addCNF(clause);
-
-        clause.clear();
-        clause.push_back(t);
-        clause.push_back(f);
-        clause.push_back(~v);
-        addCNF(clause);
-      }
-    }
-
-    _solver->addClause(Lit(trueNode));
-    _solver->addClause(~Lit(falseNode));
-    _solver->addClause(Lit(BDD[0][0]));
+    _solver->addUnit(commander_lits[0]);
   }
 
   // For incremental proof, use "assumeSolve()"
@@ -283,8 +209,7 @@ public:
 
   // For one time proof, use "solve"
   void assertProperty(Var prop, bool val) {
-    // _solver->addUnit(val ? Lit(prop) : ~Lit(prop));
-    _solver->addClause(val ? Lit(prop) : ~Lit(prop));
+    _solver->addUnit(val ? Lit(prop) : ~Lit(prop));
   }
   bool solve() {
     _solver->solve();
@@ -298,10 +223,10 @@ public:
                 ? 1
                 : (_solver->modelValue(v) == l_False ? 0 : -1));
   }
-  // void printStats() const { const_cast<Solver *>(_solver)->printStats(); }
+  void printStats() const { const_cast<Solver *>(_solver)->printStats(); }
 
 private:
-  Solver *_solver;  // Pointer to a Glucose solver
+  Solver *_solver;  // Pointer to a Minisat solver
   Var _curVar;      // Variable currently
   vec<Lit> _assump; // Assumption List for assumption solve
 };

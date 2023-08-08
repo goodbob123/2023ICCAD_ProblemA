@@ -514,10 +514,17 @@ void BMatchSolver::run() {
         vector<Order*> outputPairs;
         if (toStep) {
             cur = outMgr.step();
-            if (cur != 0 && outMgr.isBacktrack()) cur = outMgr.step();
-        } else {
+            if (cur!= 0 && outMgr.isBacktrack()) {
+                cur = outMgr.step();
+                assert(!outMgr.isBacktrack());
+            }
+        } 
+        else {
             cur = outMgr.backTrack();
-            if (cur != 0) cur = outMgr.step();
+            if (cur != 0) {
+                cur = outMgr.step();
+                assert(!outMgr.isBacktrack());
+            }
         }
         if (cur == 0) {
             cout << "No output pairs found!" << endl;
@@ -1142,15 +1149,24 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
         if (!supportInput_x.count(i)) redundantInput_x.push_back(i);
     for (int i = 0; i < y.size(); ++i)
         if (!supportInput_y.count(i)) redundantInput_y.push_back(i);
-    cout << endl;
-    cout << "redundantInput_x: ";
-    for (const auto& s : redundantInput_x) cout << s << " ";
-    cout << endl;
-    cout << "redundantInput_y: ";
-    for (const auto& s : redundantInput_y) cout << s << " ";
-    cout << endl;
+    // cout << endl;
+    // cout << "redundantInput_x: ";
+    // for (const auto& s : redundantInput_x) cout << s << " ";
+    // cout << endl;
+    // cout << "redundantInput_y: ";
+    // for (const auto& s : redundantInput_y) cout << s << " ";
+    // cout << endl;
+    matrixSolverInstance = 0;
+    matrixSolverPeriodInstance = 0;
+    previousTime = clock();
     while (1) {
-        cerr << ".";
+        matrixSolverInstance ++;
+        matrixSolverPeriodInstance ++;
+        if ((clock() - previousTime) / CLOCKS_PER_SEC >= 1) {
+            cerr << "\rMatrix Solver solve: " << setw(4) << matrixSolverPeriodInstance / ((clock() - previousTime) / CLOCKS_PER_SEC) << " /sec, total solve: " << setw(5) << matrixSolverInstance;
+            matrixSolverPeriodInstance = 0;
+            previousTime = clock();
+        }
         bool inputResult = matrixSolver.assumpSolve();
         if (!inputResult) {
             cout << "cannot find other input mapping" << endl;
@@ -1267,7 +1283,6 @@ bool BMatchSolver::miterSolve() {
         
         for (int i = 0; i < fStar.size(); ++i) {
             for (int j = 0; j < f.size(); ++j) {
-                if (outMgr.order_map[i][j].isForbid()) continue;
                 if (miterSolver.getValue(g[i].getVar()) !=
                     miterSolver.getValue(f[j].getVar())) {
                     lits.push_back(~Lit(c[i][j].matrixVar));
