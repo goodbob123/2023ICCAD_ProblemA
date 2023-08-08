@@ -499,13 +499,17 @@ void BMatchSolver::run() {
         vector<Order*> outputPairs;
         if (toStep) {
             cur = outMgr.step();
-            if (cur!= 0 && outMgr.isBacktrack()) cur = outMgr.step();
-            assert(!outMgr.isBacktrack());
+            if (cur!= 0 && outMgr.isBacktrack()) {
+                cur = outMgr.step();
+                assert(!outMgr.isBacktrack());
+            }
         } 
         else {
             cur = outMgr.backTrack();
-            if (cur != 0) cur = outMgr.step();
-            assert(!outMgr.isBacktrack());
+            if (cur != 0) {
+                cur = outMgr.step();
+                assert(!outMgr.isBacktrack());
+            }
         }
         if (cur == 0) {
             cout << "No output pairs found!" << endl;

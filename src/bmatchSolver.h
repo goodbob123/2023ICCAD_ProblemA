@@ -168,9 +168,12 @@ class Order
             assign_pre = 0;
 
             grp = 0;
-            support_atri = fport_ptr->nofSupport() + gport_ptr->nofSupport();
+            // support_atri = fport_ptr->nofSupport() + gport_ptr->nofSupport();
+            support_atri = gport_ptr->nofSupport();
             support_span_atri = gport_ptr->nofSupport() - fport_ptr->nofSupport();
             bus_atri = (fBus_ptr->getBusSize() == gBus_ptr->getBusSize());
+            cone_span_atri = gport_ptr->getCoverage() - fport_ptr->getCoverage();
+            if (cone_span_atri < 0) cone_span_atri = -cone_span_atri;
         }
         friend class Comparator;
         friend class OutPortMgr;
@@ -347,7 +350,8 @@ class Order
 
         size_t grp;
         size_t support_atri;
-        size_t support_span_atri;
+        int support_span_atri;
+        int cone_span_atri;
         bool bus_atri;
 };
 
@@ -357,16 +361,15 @@ class Comparator {
     // since used in OutPortMgr, Port is stored as second of pair
     public:
         bool operator() (const Order* a, const Order* b) {
-            // todo
-            // float a_span = float(a.support_span_atri) / float(a.support_atri);
-            // float b_span = float(b.support_span_atri) / float(b.support_atri);
-            // if (a_span < b_span) return true;
-            if (a->support_span_atri == b->support_span_atri) {
-                if (a->support_atri == b->support_atri) {
-                    return a->bus_atri && !b->bus_atri;
-                } else return a->support_atri < b->support_atri;
-            } else return a->support_span_atri < b->support_span_atri;
-
+            assert(a->support_span_atri >= 0);
+            assert(b->support_span_atri >= 0);
+            if (a->support_atri == b->support_atri) {
+                if (a->support_span_atri == b->support_span_atri) {
+                    if (a->cone_span_atri == b->cone_span_atri) {
+                        return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
+                    } else return a->cone_span_atri < b->cone_span_atri;
+                } else return a->support_span_atri < b->support_span_atri;
+            } else return a->support_atri < b->support_atri;
         }
         bool operator() (const set<int>& a, const set<int>& b) {
             return a.size() < b.size();
