@@ -546,7 +546,8 @@ int main(int argc, char* argv[]) {
     bmatchSolver.genFuncSupport(support);
     bmatchSolver.inputPreprocess();
     bmatchSolver.outputPreprocess();
-    // bmatchSolver.simulate();
+    // for (int i = 0; i < 10; ++i)
+    //     bmatchSolver.simulate();
     bmatchSolver.readBusInfo(bus, true);
     bmatchSolver.readBusInfo(bus, false);
     bmatchSolver.printInfo();

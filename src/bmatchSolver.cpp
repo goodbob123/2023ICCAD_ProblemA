@@ -328,13 +328,27 @@ void BMatchSolver::addEqualConstraint() {
     vector<vector<pair<CirGate*, bool>>> equalGroup_1, equalGroup_2;
     equalGroup_1 = c1->fraigForGroup();
     equalGroup_2 = c2->fraigForGroup();
-
+    
     for (int i = 0; i < c1->POs.size(); ++i) {
         id2i[c1->POs[i]->getId()] = i;
     }
     for (int j = 0; j < c2->POs.size(); ++j) {
         id2j[c2->POs[j]->getId()] = j;
     }
+
+  
+
+    if(equalGroup_1.empty() || equalGroup_2.empty()) return;
+    cout<<" ------------  Circuit 1 Equal Group Size: "<<equalGroup_1.size()<<" ------------"<<endl;
+   for (size_t index_1 = 0; index_1 < equalGroup_1.size(); ++index_1) {
+    cout<<setw(3)<<equalGroup_1[index_1].size()<<" ";
+   }
+   cout<<endl;
+   cout<<" ------------  Circuit 2 Equal Group Size: "<<equalGroup_2.size()<<" ------------"<<endl;
+   for (size_t index_2 = 0; index_2 < equalGroup_2.size(); ++index_2) {
+    cout<<setw(3)<<equalGroup_2[index_2].size()<<" ";
+   }
+   cout<<endl;
     
     // create output's Equal group mapping
     for (size_t index_1 = 0; index_1 < equalGroup_1.size(); ++index_1) {
@@ -386,7 +400,7 @@ void BMatchSolver::outputPreprocess() {
     for (int j = 0; j < f.size(); ++j) {
         for (int i = 0; i < g.size(); ++i) {
             if (f[j].nofSupport() > g[i].nofSupport()) {
-                // if (f[j].nofSupport() != g[i].nofSupport()) {
+            // if (f[j].nofSupport() != g[i].nofSupport()) {
                 // outputSolver.assertProperty(outputC[i][j], false);
                 // outputSolver.assertProperty(outputD[i][j], false);
                 outputSolver.assertProperty(outputVarMatrix[i][j], false);
@@ -560,18 +574,16 @@ void BMatchSolver::run() {
                 else
                     currentResult.insert(c[gid][fid].matrixVar);
             }
-            // for (auto v: currentResult) cout << v << " ";
-            // cout << endl;
+            cout << "start solving for: " << endl;
+            for (auto v: currentResult) cout << v << " ";
+            cout << endl;
             if (isValidMo(currentResult)) {
+                cout << "solved!" << endl;
                 negation[validSolNum] = negation[i];
                 ++validSolNum;
                 if (!considerAll) break;
             }
-            // for (auto vec: negation) {
-            //     for (auto n: vec) cout << n << " ";
-            //     cout << endl;
-            // }
-            // cout << "\\|/" << endl;
+            cout << "not solve!" << endl;
         }
         cout << "r3" << endl;
         if (!considerAll) assert(validSolNum < 2);
@@ -1130,13 +1142,13 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
         if (!supportInput_x.count(i)) redundantInput_x.push_back(i);
     for (int i = 0; i < y.size(); ++i)
         if (!supportInput_y.count(i)) redundantInput_y.push_back(i);
-    // cout << endl;
-    // cout << "redundantInput_x: ";
-    // for (const auto& s : redundantInput_x) cout << s << " ";
-    // cout << endl;
-    // cout << "redundantInput_y: ";
-    // for (const auto& s : redundantInput_y) cout << s << " ";
-    // cout << endl;
+    cout << endl;
+    cout << "redundantInput_x: ";
+    for (const auto& s : redundantInput_x) cout << s << " ";
+    cout << endl;
+    cout << "redundantInput_y: ";
+    for (const auto& s : redundantInput_y) cout << s << " ";
+    cout << endl;
     while (1) {
         cerr << ".";
         bool inputResult = matrixSolver.assumpSolve();
@@ -1243,23 +1255,19 @@ bool BMatchSolver::miterSolve() {
         vector<Lit> lits;
 
         // partial assignment
-        vector<int> assign_x, assign_y, assign_f, assign_g;
-        vector<set<int>> necessary_f, necessary_g;
-        for (int i = 0; i < x.size(); ++i) assign_x.push_back(miterSolver.getValue(x[i].getVar()));
-        for (int i = 0; i < y.size(); ++i) assign_y.push_back(miterSolver.getValue(y[i].getVar()));
-        for (int i = 0; i < f.size(); ++i) assign_f.push_back(miterSolver.getValue(f[i].getVar()));
-        for (int i = 0; i < g.size(); ++i) assign_g.push_back(miterSolver.getValue(g[i].getVar()));
+        // vector<int> assign_x, assign_y, assign_f, assign_g;
+        // vector<set<int>> necessary_f, necessary_g;
+        // for (int i = 0; i < x.size(); ++i) assign_x.push_back(miterSolver.getValue(x[i].getVar()));
+        // for (int i = 0; i < y.size(); ++i) assign_y.push_back(miterSolver.getValue(y[i].getVar()));
+        // for (int i = 0; i < f.size(); ++i) assign_f.push_back(miterSolver.getValue(f[i].getVar()));
+        // for (int i = 0; i < g.size(); ++i) assign_g.push_back(miterSolver.getValue(g[i].getVar()));
 
-        necessary_f = c1->getNecessary(assign_x, assign_f);
-        necessary_g = c2->getNecessary(assign_y, assign_g);
-        cout << "hello!" << endl;
+        // necessary_f = c1->getNecessary(assign_x, assign_f);
+        // necessary_g = c2->getNecessary(assign_y, assign_g);
+        
         for (int i = 0; i < fStar.size(); ++i) {
             for (int j = 0; j < f.size(); ++j) {
-                if (outMgr.order_map[j][i].isForbid()) continue;
-                // if (f[j].nofSupport() > g[i].nofSupport()) {
-                //     cout << "skip ";
-                //     continue;
-                // }
+                if (outMgr.order_map[i][j].isForbid()) continue;
                 if (miterSolver.getValue(g[i].getVar()) !=
                     miterSolver.getValue(f[j].getVar())) {
                     lits.push_back(~Lit(c[i][j].matrixVar));
@@ -1268,12 +1276,12 @@ bool BMatchSolver::miterSolve() {
                 }
                 // TODO: and or or
                 for (int k = 0; k < y.size(); ++k) {
-                    // if (!g[i].isSupport(k))
-                    if (!necessary_g[i].count(k))
+                    if (!g[i].isSupport(k))
+                    // if (!necessary_g[i].count(k))
                         continue;
-                    for (int l = 0; l < x.size(); ++l) {  // +1 or not
-                                                          // if (!f[j].isSupport(l))
-                        if (!necessary_f[j].count(l))
+                    for (int l = 0; l < x.size(); ++l) {  
+                         if (!f[j].isSupport(l))
+                        // if (!necessary_f[j].count(l))
                             continue;
                         if (miterSolver.getValue(y[k].getVar()) !=
                             miterSolver.getValue(x[l].getVar())) {

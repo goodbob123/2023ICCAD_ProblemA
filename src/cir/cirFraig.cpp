@@ -303,46 +303,37 @@ vector<vector<pair<CirGate*, bool>>> CirMgr::fraigForGroup() {
     vector<vector<pair<CirGate*, bool>>> equalGroups;
     // construct circuit info
     genProofModel(solver);
-    vector<int> later;
     // find FEC
     int numPattern = 0;
     inputPattern.clear();
     inputPattern = vector<uint64_t>(PIs.size());
-    int sizeNum = 0;
-    int prevSize = 0;
     vector<pair<CirGate*, bool>> equalGroup;
+    vector<pair<CirGate*, bool>> newGroup;
+    // cout << "INIT --  Total #FEC Group = " << SimGroups.size() << endl;
     while (SimGroups.size() != 0) {
         for (int i = 0; i < SimGroups.size(); ++i) {
+            // cout << "ENTER " << i << " , size: " << SimGroups[i].size() << endl;
             if (SimGroups[i].size() <= 1) {
                 SimGroups.erase(SimGroups.begin() + i);
                 --i;
-                if (!equalGroup.empty()) {
-                    equalGroups.push_back(equalGroup);
-                    equalGroup.clear();
-                }
                 continue;
             }
             for (size_t j = 1; j < SimGroups[i].size(); ++j) {
                 // a XOR b
                 if (ifFEC(solver, SimGroups[i][0], SimGroups[i][j])) {
                     // merge
+                    // cout << "Merge " << j << endl;
                     if (equalGroup.empty())
                         equalGroup.push_back(SimGroups[i][0]);
                     equalGroup.push_back(SimGroups[i][j]);
-
-                    CirGate* need = SimGroups[i][0].first;
-                    CirGate* curr = SimGroups[i][j].first;
-                    if ((need->fanin0id == curr->id) && need->id != 0) {
-                        CirGate* temp = need;
-                        need = curr;
-                        curr = temp;
-                    }
-                    // delete curr
                     SimGroups[i].erase(SimGroups[i].begin() + j);
                     --j;
                 }
                 // not equal -> inputpattern ++
                 else {
+                    newGroup.push_back(SimGroups[i][j]);
+                    SimGroups[i].erase(SimGroups[i].begin() + j);
+                    --j;
                     ++numPattern;
                     if (numPattern == 64) {
                         simulate64times();
@@ -353,61 +344,21 @@ vector<vector<pair<CirGate*, bool>>> CirMgr::fraigForGroup() {
                         numPattern = 0;
                         // restart again
                         i = 0;
-                        // update AIG
-                        updateAIGs();
-
-                        // updateFanout
-                        updateFanout();
-
-                        if (SimGroups.size() == prevSize) {
-                            ++sizeNum;
-                        } else {
-                            sizeNum = 0;
-                        }
-                        if (sizeNum == 10) {
-                            for (int i = 0; i < SimGroups.size(); ++i) {
-                                SimGroups[i].erase(SimGroups[i].begin());
-                            }
-                            // cout << "stuck!!" << endl;
-                        }
-                        if (sizeNum == 20) {
-                            SimGroups.clear();
-                            // cout << "force to stop ! " << endl;
-                            break;
-                        }
-                        prevSize = SimGroups.size();
-                        // break;
                     }
-                }
-                if (SimGroups[i].size() <= 1) {
-                    SimGroups.erase(SimGroups.begin() + i);
-                    // cout << "\rTotal #FEC Group = " << SimGroups.size();
-                    if (!equalGroup.empty()) {
-                        equalGroups.push_back(equalGroup);
-                        equalGroup.clear();
-                    }
-                    continue;
                 }
             }
 
-            if (sizeNum == 20) {
-                // SimGroups.clear();
-                // cout << "force to stop ! " << endl;
-                if (!equalGroup.empty()) {
-                    equalGroups.push_back(equalGroup);
-                    equalGroup.clear();
-                }
-                break;
-            }
             if (!equalGroup.empty()) {
                 equalGroups.push_back(equalGroup);
                 equalGroup.clear();
             }
-        }
-        if (sizeNum == 20) {
-            // SimGroups.clear();
-            // cout << "force to stop ! " << endl;
-            break;
+            if (!newGroup.empty()) {
+                // cout << "currentNewSize: " << newGroup.size() << endl;
+                SimGroups.push_back(newGroup);
+                newGroup.clear();
+            }
+            // cout << "Leave " << i << " , size: " << SimGroups[i].size() << endl;
+            // cout << "\rTotal #FEC Group = " << SimGroups.size() << endl;
         }
     }
     // cout << "END..." << endl;
@@ -420,5 +371,8 @@ vector<vector<pair<CirGate*, bool>>> CirMgr::fraigForGroup() {
 
     isSimulated = false;
 
+    // remove CONST gate
+    if (!equalGroups.empty())
+        if (equalGroups[0][0].first->getTypeName() == "CONST") equalGroups[0].erase(equalGroups[0].begin());
     return equalGroups;
 }

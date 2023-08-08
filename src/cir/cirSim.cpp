@@ -255,6 +255,7 @@ void CirMgr::simulate64times() {
             --i;
         }
     }
+    // cout << "Current simgroupSize: " << SimGroups.size() << endl;
 }
 
 void CirMgr::writeLog() {
