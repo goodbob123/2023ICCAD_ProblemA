@@ -444,11 +444,7 @@ void BMatchSolver::outputPreprocess() {
     for (int j = 0; j < f.size(); ++j) {
         for (int i = 0; i < g.size(); ++i) {
             if (f[j].nofSupport() > g[i].nofSupport()) {
-<<<<<<< HEAD
             // if (f[j].nofSupport() != g[i].nofSupport()) {
-=======
-                // if (f[j].nofSupport() != g[i].nofSupport()) {
->>>>>>> 5bb1552 (merge fix bug)
                 // outputSolver.assertProperty(outputC[i][j], false);
                 // outputSolver.assertProperty(outputD[i][j], false);
                 outputSolver.assertProperty(outputVarMatrix[i][j], false);
@@ -562,17 +558,12 @@ void BMatchSolver::run() {
         vector<Order*> outputPairs;
         if (toStep) {
             cur = outMgr.step();
-<<<<<<< HEAD
             if (cur!= 0 && outMgr.isBacktrack()) {
                 cur = outMgr.step();
                 assert(!outMgr.isBacktrack());
             }
         } 
         else {
-=======
-            if (cur != 0 && outMgr.isBacktrack()) cur = outMgr.step();
-        } else {
->>>>>>> 5bb1552 (merge fix bug)
             cur = outMgr.backTrack();
             if (cur != 0) {
                 cur = outMgr.step();
@@ -1330,15 +1321,10 @@ bool BMatchSolver::miterSolve() {
         for (int i = 0; i < y.size(); ++i) assign_y.push_back(miterSolver.getValue(y[i].getVar()));
         for (int i = 0; i < f.size(); ++i) assign_f.push_back(miterSolver.getValue(f[i].getVar()));
         for (int i = 0; i < g.size(); ++i) assign_g.push_back(miterSolver.getValue(g[i].getVar()));
-<<<<<<< HEAD
 
         necessary_f = c1->getNecessary(assign_x, assign_f);
         necessary_g = c2->getNecessary(assign_y, assign_g);
-=======
->>>>>>> 5bb1552 (merge fix bug)
 
-        necessary_f = c1->getNecessary(assign_x, assign_f);
-        necessary_g = c2->getNecessary(assign_y, assign_g);
         cout << "hello!" << endl;
         for (int i = 0; i < fStar.size(); ++i) {
             for (int j = 0; j < f.size(); ++j) {
@@ -1358,13 +1344,8 @@ bool BMatchSolver::miterSolve() {
                     // if (!g[i].isSupport(k))
                     if (!necessary_g[i].count(k))
                         continue;
-<<<<<<< HEAD
                     for (int l = 0; l < x.size(); ++l) {
                         //  if (!f[j].isSupport(l))
-=======
-                    for (int l = 0; l < x.size(); ++l) {  // +1 or not
-                                                          // if (!f[j].isSupport(l))
->>>>>>> 5bb1552 (merge fix bug)
                         if (!necessary_f[j].count(l))
                             continue;
                         if (miterSolver.getValue(y[k].getVar()) !=

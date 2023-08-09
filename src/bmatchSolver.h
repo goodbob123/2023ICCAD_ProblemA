@@ -790,19 +790,6 @@ class BMatchSolver {
     void testOutputMgr();
     void simulate();
     void interactiveSolve();
-<<<<<<< HEAD
-=======
-    void printDebug() {
-            return;
-            for (int i = 0; i < debug.size(); ++i) {
-                for (int j = 0; j < debug[0].size(); ++j) {
-                    cerr << debug[i][j] << " ";
-                }
-                cerr << endl;
-            }
-            cerr << endl;
-    }
->>>>>>> 5bb1552 (merge fix bug)
 
    protected:
     void genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aag2);
@@ -875,12 +862,8 @@ class BMatchSolver {
 
     // file
     char* file_match;
-<<<<<<< HEAD
 
     size_t matrixSolverInstance;
     size_t matrixSolverPeriodInstance;
     double previousTime;
-=======
-    vector<vector<bool>> debug;
->>>>>>> 5bb1552 (merge fix bug)
 };
