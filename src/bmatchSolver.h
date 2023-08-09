@@ -366,7 +366,7 @@ class Comparator {
             assert(a->support_span_atri >= 0);
             assert(b->support_span_atri >= 0);
             if (a->support_atri == b->support_atri) {
-                if (a->support_atri == b->support_atri) {
+                if (a->cone_atri == b->cone_atri) {
                     if (a->support_span_atri == b->support_span_atri) {
                         if (a->cone_span_atri == b->cone_span_atri) {
                             return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
