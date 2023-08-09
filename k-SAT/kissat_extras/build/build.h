@@ -1,0 +1,5 @@
+#define VERSION "0.1.0-dev"
+#define COMPILER "gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0 -W -Wall -O3 -DNDEBUG"
+#define ID "cacff0d5091bf32b6da6e49575ff9bfa2d564f86"
+#define BUILD "Tue Aug 8 02:48:44 PM CST 2023 Linux cthulhu 5.15.0-78-generic x86_64"
+#define DIR "/home/wish/abcBug/2023ICCAD_ProblemA/kissat_extras/build"

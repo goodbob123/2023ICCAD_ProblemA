@@ -14,7 +14,10 @@
 #include <vector>
 
 // #include "../SAT/test/sat.h"
-#include "../SAT/sat.h"
+// #include "../SAT/sat.h"
+#include "../../k-SAT/k-sat.h"
+
+
 #include "cirDef.h"
 
 using namespace std;

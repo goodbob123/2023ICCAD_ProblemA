@@ -1,0 +1,95 @@
+CC=gcc -W -Wall -O3 -DNDEBUG
+LD=gcc
+AR=ar
+
+VPATH=../src:../test
+
+%.o: %.c ../[st]*/*.h makefile
+	$(CC) -c $<
+
+%.h.check: %.h ../[st]*/*.h makefile
+	$(CC) -c $< -o $@
+
+APPSRC=application.c handle.c parse.c witness.c
+
+LIBSRT=$(sort $(wildcard ../src/*.c))
+LIBSUB=$(subst ../src/,,$(LIBSRT))
+LIBSRC=$(filter-out main.c $(APPSRC),$(LIBSUB))
+
+TSTSRT=$(sort $(wildcard ../test/*.c))
+TSTSUB=$(subst ../test/,,$(TSTSRT))
+TSTSRC=$(filter-out test.c,$(TSTSUB))
+
+HEADSRT=$(sort $(wildcard ../src/*.h))
+HEADSUB=$(subst ../src/,,$(HEADSRT))
+HEADSRC=$(filter-out proplit.h,$(HEADSUB))
+HEADCHK=$(HEADSRC:.h=.h.check)
+
+APPOBJ=$(APPSRC:.c=.o)
+LIBOBJ=$(LIBSRC:.c=.o)
+TSTOBJ=$(APPOBJ) $(TSTSRC:.c=.o)
+
+INCLUDES=-I../$(shell pwd|sed -e 's,.*/,,')
+
+LIBS=libkissat.a
+
+all: libkissat.a kissat
+
+test: all tissat
+	./tissat
+
+headers: $(HEADCHK)
+
+REMOVE=*.gcda *.gcno *.gcov gmon.out *~ *.proof
+
+clean:
+	rm -f kissat tissat kitten
+	rm -f makefile build.h *.o *.a *.so
+	rm -f $(REMOVE)
+	cd ../src; rm -f $(REMOVE)
+	cd ../test; rm -f $(REMOVE)
+
+coverage:
+	@gcov -o . -s ../src/*.[ch] 2>&1 | \
+	../scripts/filter-coverage-output.sh
+indent:
+	printf '%s\n' ../*/*.[ch] | xargs -n 1 -P $(shell nproc) -- \
+		astyle -n -q --style=attach \
+			-j -xf -xh -xC80 -s2 -xU -xt3 -L -k3 -W3 -p -xg -U -H
+
+kissat: main.o $(APPOBJ) libkissat.a makefile
+	$(LD) -o $@ main.o $(APPOBJ) $(LIBS) -lm
+
+tissat: test.o $(TSTOBJ) libkissat.a makefile
+	$(LD) -o $@ test.o $(TSTOBJ) $(LIBS) -lm
+
+kitten: kitten.c random.h stack.h makefile
+	$(CC) $(CFLAGS) -DSTAND_ALONE_KITTEN -o $@ ../src/kitten.c
+
+build.h:
+	../scripts/generate-build-header.sh > $@
+
+collect.o: sort.c
+dense.o: sort.c
+propdense.o: assign.c
+prophyper.o: assign.c
+proprobe.o: assign.c
+propsearch.o: assign.c
+watch.o: sort.c
+
+build.o: build.c build.h ../[st]*/*.h makefile
+	$(CC) $(INCLUDES) -c $<
+
+testkitten.o: testkitten.c ../[st]*/*.h makefile
+	$(CC) -c $<
+
+test.o: test.c build.h ../[st]*/*.h makefile
+	$(CC) $(INCLUDES) -c $<
+
+libkissat.a: $(LIBOBJ) makefile
+	$(AR) rc $@ $(LIBOBJ)
+
+libkissat.so: $(LIBOBJ) makefile
+	$(LD) -shared -o $@ $(LIBOBJ)
+
+.PHONY: all clean coverage headers indent test build.h

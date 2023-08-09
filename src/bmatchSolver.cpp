@@ -58,10 +58,10 @@ void BMatchSolver::testOutputMgr() {  // pushPort
         for (auto assign: assignment) {
             assign->printMapping();
         }
-        cout << "____" << endl;
-        outMgr.printAssign();
-        cout << "____" << endl;
-        cur = outMgr.step();
+        // cout << "____" << endl;
+        // outMgr.printAssign();
+        // cout << "____" << endl;
+        // cur = outMgr.step();
         // cout << "____" << endl;
         // cur->printLink();
     }
@@ -455,11 +455,11 @@ void BMatchSolver::run() {
     bool toStep = true;
     Order* cur = outMgr.getHead();
 
-    outMgr.printAssign();
-    for (auto assign: outMgr.getAllAssign()) {
-        assign->printMapping();
-    }
-    cout << "__________" << endl;
+    // outMgr.printAssign();
+    // for (auto assign: outMgr.getAllAssign()) {
+    //     assign->printMapping();
+    // }
+    // cout << "__________" << endl;
 
     // cout << "c_matrix" << endl;
     // for (auto cv: c) {
@@ -515,13 +515,13 @@ void BMatchSolver::run() {
             cout << "No output pairs found!" << endl;
             break;
         }
-        cout << "assignment: " << endl;
+        // cout << "assignment: " << endl;
         outputPairs = outMgr.getAllAssign();
-        outMgr.printAssign();
-        for (auto assign: outputPairs) {
-            assign->printMapping();
-        }
-        cout << "__________" << endl;
+        // outMgr.printAssign();
+        // for (auto assign: outputPairs) {
+        //     assign->printMapping();
+        // }
+        // cout << "__________" << endl;
         cout << "r1" << endl;
 
         vector<vector<bool> > negation(1, vector<bool> ());

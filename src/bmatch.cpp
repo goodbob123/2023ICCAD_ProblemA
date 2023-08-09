@@ -1,8 +1,8 @@
 
 #include <stdio.h>
 
-// #include "./SAT/test/sat.h"
-#include "./SAT/sat.h"
+
+// #include "./SAT/sat.h"
 #include "bmatchSolver.h"
 extern "C" {
 #include "aiger.h"
