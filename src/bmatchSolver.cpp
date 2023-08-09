@@ -455,11 +455,11 @@ void BMatchSolver::run() {
     bool toStep = true;
     Order* cur = outMgr.getHead();
 
-    outMgr.printAssign();
-    for (auto assign: outMgr.getAllAssign()) {
-        assign->printMapping();
-    }
-    cout << "__________" << endl;
+    // outMgr.printAssign();
+    // for (auto assign: outMgr.getAllAssign()) {
+    //     assign->printMapping();
+    // }
+    // cout << "__________" << endl;
 
     // cout << "c_matrix" << endl;
     // for (auto cv: c) {
@@ -495,7 +495,7 @@ void BMatchSolver::run() {
         //     cout << "No output pairs found!" << endl;
         //     break;
         // }
-        cout << "r0" << endl;
+        // cout << "r0" << endl;
         vector<Order*> outputPairs;
         if (toStep) {
             cur = outMgr.step();
@@ -512,17 +512,17 @@ void BMatchSolver::run() {
             }
         }
         if (cur == 0) {
-            cout << "No output pairs found!" << endl;
+            // cout << "No output pairs found!" << endl;
             break;
         }
-        cout << "assignment: " << endl;
+        // cout << "assignment: " << endl;
         outputPairs = outMgr.getAllAssign();
-        outMgr.printAssign();
-        for (auto assign: outputPairs) {
-            assign->printMapping();
-        }
-        cout << "__________" << endl;
-        cout << "r1" << endl;
+        // outMgr.printAssign();
+        // for (auto assign: outputPairs) {
+        //     assign->printMapping();
+        // }
+        // cout << "__________" << endl;
+        // cout << "r1" << endl;
 
         vector<vector<bool> > negation(1, vector<bool> ());
         for (size_t i = 0; i < outputPairs.size(); ++i) {
@@ -543,7 +543,7 @@ void BMatchSolver::run() {
             // }
             if (negation.size() > 50) negation.resize(50);
         }
-        cout << "r2" << endl;
+        // cout << "r2" << endl;
 
         // for (auto vec: negation) {
         //     for (auto n: vec) cout << n << " ";
@@ -562,18 +562,20 @@ void BMatchSolver::run() {
                 if (negation[i][k] == 1) currentResult.insert(d[gid][fid].matrixVar);
                 else currentResult.insert(c[gid][fid].matrixVar);
             }
-            cout << "start solving for: " << endl;
-            for (auto v: currentResult) cout << v << " ";
-            cout << endl;
+            // cout << "start solving for: " << endl;
+            // for (auto v: currentResult) cout << v << " ";
+            // cout << endl;
             if (isValidMo(currentResult)) {
                 cout << "solved!" << endl;
+                if (fixedMiMethod())
+                    break;
                 negation[validSolNum] = negation[i];
                 ++validSolNum;
                 if (!considerAll) break;
             }
-            cout << "not solve!" << endl;
+            // cout << "not solve!" << endl;
         }
-        cout << "r3" << endl;
+        // cout << "r3" << endl;
         if (!considerAll) assert(validSolNum < 2);
         negation.resize(validSolNum);
         bool canPos = false;
@@ -589,7 +591,7 @@ void BMatchSolver::run() {
         if (!canNeg) outputPairs[end]->failNeg();
         
         toStep = negation.size() != 0;
-        cout << "r4" << endl;
+        // cout << "r4" << endl;
 
 
 
@@ -615,27 +617,27 @@ void BMatchSolver::outputAns() {
         cout << "No matching found!" << endl;
         return;
     }
-    cout << "----------Optimal Matching----------" << endl;
-    cout << "Best Score: " << bestScore << endl
-         << endl;
-    cout << "Input matrix: " << endl;
-    for (int i = 0; i < ans_a.size(); ++i) {
-        for (int j = 0; j < ans_a[0].size(); ++j) {
-            cout << ans_a[i][j] << " ";
-            cout << ans_b[i][j] << " ";
-        }
-        cout << endl;
-    }
-    cout << endl;
-    cout << "Output matrix: " << endl;
-    for (int i = 0; i < ans_c.size(); ++i) {
-        for (int j = 0; j < ans_c[0].size(); ++j) {
-            cout << ans_c[i][j] << " ";
-            cout << ans_d[i][j] << " ";
-        }
-        cout << endl;
-    }
-    cout << endl;
+    // cout << "----------Optimal Matching----------" << endl;
+    // cout << "Best Score: " << bestScore << endl
+    //      << endl;
+    // cout << "Input matrix: " << endl;
+    // for (int i = 0; i < ans_a.size(); ++i) {
+    //     for (int j = 0; j < ans_a[0].size(); ++j) {
+    //         cout << ans_a[i][j] << " ";
+    //         cout << ans_b[i][j] << " ";
+    //     }
+    //     cout << endl;
+    // }
+    // cout << endl;
+    // cout << "Output matrix: " << endl;
+    // for (int i = 0; i < ans_c.size(); ++i) {
+    //     for (int j = 0; j < ans_c[0].size(); ++j) {
+    //         cout << ans_c[i][j] << " ";
+    //         cout << ans_d[i][j] << " ";
+    //     }
+    //     cout << endl;
+    // }
+    // cout << endl;
     // output to file as required format
     // INGROUP
     ofstream out(file_match);
@@ -861,11 +863,17 @@ void BMatchSolver::buildMatrix() {
     // Output constraints on outputSolver
     for (int i = 0; i < fStar.size(); ++i) {
         vector<Lit> lits;
+        vector<Lit> lits2;
         for (int j = 0; j < f.size(); ++j) {
             lits.clear();
             lits.push_back(~Lit(outputC[i][j]));
             lits.push_back(~Lit(outputD[i][j]));
             outputSolver.addCNF(lits);
+
+            lits2.clear();
+            lits2.push_back(~Lit(c[i][j].matrixVar));
+            lits2.push_back(~Lit(d[i][j].matrixVar));
+            matrixSolver.addCNF(lits2);
             for (int k = j + 1; k < f.size(); ++k) {
                 lits.clear();
                 lits.push_back(~Lit(outputC[i][j]));
@@ -886,6 +894,28 @@ void BMatchSolver::buildMatrix() {
                 lits.push_back(~Lit(outputD[i][j]));
                 lits.push_back(~Lit(outputD[i][k]));
                 outputSolver.addCNF(lits);
+
+
+                lits2.clear();
+                lits2.push_back(~Lit(c[i][j].matrixVar));
+                lits2.push_back(~Lit(c[i][k].matrixVar));
+                matrixSolver.addCNF(lits2);
+
+                lits2.clear();
+                lits2.push_back(~Lit(c[i][j].matrixVar));
+                lits2.push_back(~Lit(d[i][k].matrixVar));
+                matrixSolver.addCNF(lits2);
+
+                lits2.clear();
+                lits2.push_back(~Lit(d[i][j].matrixVar));
+                lits2.push_back(~Lit(c[i][k].matrixVar));
+                matrixSolver.addCNF(lits2);
+
+                lits2.clear();
+                lits2.push_back(~Lit(d[i][j].matrixVar));
+                lits2.push_back(~Lit(d[i][k].matrixVar));
+                matrixSolver.addCNF(lits2);
+                
             }
         }
     }
@@ -1215,30 +1245,36 @@ bool BMatchSolver::miterSolve() {
         // Block answer
 
         cout << "Find a valid mapping!" << endl;
-        cout << "Input matrix:" << endl;
+        // cout << "Input matrix:" << endl;
         for (int i = 0; i < y.size(); ++i) {
             for (int j = 0; j < x.size() + 1; ++j) {
-                cout << matrixSolver.getValue(a[i][j].matrixVar) << " ";
-                cout << matrixSolver.getValue(b[i][j].matrixVar) << " ";
+                // cout << matrixSolver.getValue(a[i][j].matrixVar) << " ";
+                // cout << matrixSolver.getValue(b[i][j].matrixVar) << " ";
                 ans_a[i][j] = matrixSolver.getValue(a[i][j].matrixVar);
                 ans_b[i][j] = matrixSolver.getValue(b[i][j].matrixVar);
             }
-            cout << endl;
+            // cout << endl;
         }
-        cout << "Output matrix:" << endl;
+        // cout << "Output matrix:" << endl;
         vector<Lit> lits;
+        vector<Lit> lits2;
         for (int i = 0; i < fStar.size(); ++i) {
             for (int j = 0; j < f.size(); ++j) {
-                cout << matrixSolver.getValue(c[i][j].matrixVar) << " ";
-                cout << matrixSolver.getValue(d[i][j].matrixVar) << " ";
+                // cout << matrixSolver.getValue(c[i][j].matrixVar) << " ";
+                // cout << matrixSolver.getValue(d[i][j].matrixVar) << " ";
                 ans_c[i][j] = matrixSolver.getValue(c[i][j].matrixVar);
                 ans_d[i][j] = matrixSolver.getValue(d[i][j].matrixVar);
                 lits.push_back(ans_c[i][j] ? ~Lit(outputC[i][j]) : Lit(outputC[i][j]));
                 lits.push_back(ans_d[i][j] ? ~Lit(outputD[i][j]) : Lit(outputD[i][j]));
+
+                lits2.push_back(ans_c[i][j] ? ~Lit(c[i][j].matrixVar) : Lit(c[i][j].matrixVar));
+                lits2.push_back(ans_d[i][j] ? ~Lit(d[i][j].matrixVar) : Lit(d[i][j].matrixVar));
+
             }
-            cout << endl;
+            // cout << endl;
         }
         outputSolver.addCNF(lits);
+        matrixSolver.addCNF(lits2);
         int score = getScore();
         if (score > bestScore) {
             outputAns();
@@ -1560,3 +1596,120 @@ void BMatchSolver::interactiveSolve() {
         }
     }
 }
+
+bool BMatchSolver::fixedMiMethod() {
+    // return false;
+    set<int> coveredY;
+    vector<Var> assumption;
+
+    for (int i = 0; i < g.size(); ++i) {
+        for (int j = 0; j < f.size(); ++j) {
+            bool gIsCovered = false;
+            if (matrixSolver.getValue(c[i][j].matrixVar) == 1) {
+                assumption.push_back(c[i][j].matrixVar);
+                gIsCovered = true;
+            }
+            if (matrixSolver.getValue(d[i][j].matrixVar) == 1) {
+                assumption.push_back(d[i][j].matrixVar);
+                gIsCovered = true;
+            }
+            if (gIsCovered) {
+                for (set<int>::const_iterator it = g[i].supports.begin(); it != g[i].supports.end(); it++) {
+                    coveredY.insert(*it);
+                }
+            }
+        }
+    }
+    cerr << "Cover: " << setw(4) << coveredY.size() << "/" << y.size() << endl;
+    float ratio = 0.75;
+    if (coveredY.size() < y.size() * ratio) {
+        return false;
+    }
+    
+    // cerr << "Inputs are covered more than " << ratio << ", enter 1 to use fixed_Mi_Method: ";
+    // int temp;
+    // cin >> temp;
+    // if (temp != 1) {
+    //     cerr << "Cancel to use fixed_Mi_Method" << endl;
+    //     return false; 
+    // }
+    for (int i = 0; i < y.size(); ++i) {
+        for (int j = 0; j < x.size() + 1; ++j) {
+            if (matrixSolver.getValue(a[i][j].matrixVar) == 1) {
+                assumption.push_back(a[i][j].matrixVar);
+            }
+            if (matrixSolver.getValue(b[i][j].matrixVar) == 1) {
+                assumption.push_back(b[i][j].matrixVar);
+            }
+        }
+    }
+
+    return fixedMiMethodSolveMatrix(assumption);   
+}
+
+bool BMatchSolver::fixedMiMethodSolveMatrix(const vector<Var>& assumption) {
+    matrixSolver.assumeRelease();
+    for (int i = 0; i < assumption.size(); ++i) {
+        matrixSolver.assumeProperty(assumption[i], true);
+    }
+
+    while (1) {
+        if (!matrixSolver.assumpSolve()) {
+            cerr << "No remaining matrix under assumption found!" << endl;
+            return false;
+        }
+        miterSolver.assumeRelease();
+        // Assume input mapping
+        for (int i = 0; i < y.size(); ++i) {
+            for (int j = 0; j < x.size() + 1; ++j) {
+                int matrixVarValue = matrixSolver.getValue(a[i][j].matrixVar);
+                if (matrixVarValue != -1) {  // -1 means unknown
+                    miterSolver.assumeProperty(a[i][j].miterVar,
+                                                matrixVarValue);
+                }
+                matrixVarValue = matrixSolver.getValue(b[i][j].matrixVar);
+                if (matrixVarValue != -1) {  // -1 means unknown
+                    miterSolver.assumeProperty(b[i][j].miterVar,
+                                                matrixVarValue);
+                }
+            }
+        }
+        // Assume output mapping
+        vector<Lit> lits;
+        int nowPairs = 0;
+        for (int i = 0; i < fStar.size(); ++i) {
+            for (int j = 0; j < f.size(); ++j) {
+                int matrixVarValue = matrixSolver.getValue(c[i][j].matrixVar);
+                if (matrixVarValue != -1) {  // -1 means unknown
+                    miterSolver.assumeProperty(c[i][j].miterVar,
+                                                matrixVarValue);
+                }
+                nowPairs += matrixVarValue;
+
+                matrixVarValue = matrixSolver.getValue(d[i][j].matrixVar);
+                if (matrixVarValue != -1) {  // -1 means unknown
+                    miterSolver.assumeProperty(d[i][j].miterVar,
+                                                matrixVarValue);
+                }
+                nowPairs += matrixVarValue;
+
+                lits.push_back(Lit(c[i][j].matrixVar));
+                lits.push_back(Lit(d[i][j].matrixVar));
+            }
+        }
+
+        if (miterSolve()) {
+            cout << "FIND PAIRS: " << nowPairs << endl;
+            // matrixSolver.addGte(lits, nowPairs+1);
+        }
+        else {
+            cerr << "find another matrix" << endl;
+        }
+
+        if (nowPairs == f.size() + g.size()) {
+            cerr << "Find all matching!" << endl;
+            return true;
+        }
+    }
+    return false;
+} 
