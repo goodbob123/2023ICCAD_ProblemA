@@ -6,8 +6,8 @@
 #include <set>
 #include <unordered_map>
 
-#include "./SAT/test/sat.h"
-//#include "./SAT/sat.h"
+// #include "./SAT/test/sat.h"
+#include "../k-SAT/k-sat.h"
 #include "./cir/cirGate.h"
 #include "./cir/cirMgr.h"
 
