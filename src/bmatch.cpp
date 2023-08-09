@@ -552,7 +552,11 @@ int main(int argc, char* argv[]) {
     bmatchSolver.readBusInfo(bus, false);
     bmatchSolver.printInfo();
     int temp;
+<<<<<<< HEAD
     //bmatchSolver.busConstraint();
+=======
+    bmatchSolver.busConstraint();
+>>>>>>> 5bb1552 (merge fix bug)
     //cerr << "Enter 1 for bus constraint: ";
     //cin >> temp;
     //if (temp == 1)

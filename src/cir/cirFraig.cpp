@@ -6,9 +6,11 @@
   Copyright    [ Copyleft(c) 2012-present LaDs(III), GIEE, NTU, Taiwan ]
 ****************************************************************************/
 
+#include <algorithm>
 #include <cassert>
 #include <istream>
 #include <map>
+#include <set>
 #include <sstream>
 #include <vector>
 
@@ -309,10 +311,8 @@ vector<vector<pair<CirGate*, bool>>> CirMgr::fraigForGroup() {
     inputPattern = vector<uint64_t>(PIs.size());
     vector<pair<CirGate*, bool>> equalGroup;
     vector<pair<CirGate*, bool>> newGroup;
-    // cout << "INIT --  Total #FEC Group = " << SimGroups.size() << endl;
     while (SimGroups.size() != 0) {
         for (int i = 0; i < SimGroups.size(); ++i) {
-            // cout << "ENTER " << i << " , size: " << SimGroups[i].size() << endl;
             if (SimGroups[i].size() <= 1) {
                 SimGroups.erase(SimGroups.begin() + i);
                 --i;
@@ -322,7 +322,6 @@ vector<vector<pair<CirGate*, bool>>> CirMgr::fraigForGroup() {
                 // a XOR b
                 if (ifFEC(solver, SimGroups[i][0], SimGroups[i][j])) {
                     // merge
-                    // cout << "Merge " << j << endl;
                     if (equalGroup.empty())
                         equalGroup.push_back(SimGroups[i][0]);
                     equalGroup.push_back(SimGroups[i][j]);
@@ -339,8 +338,6 @@ vector<vector<pair<CirGate*, bool>>> CirMgr::fraigForGroup() {
                         simulate64times();
                         inputPattern.clear();
                         inputPattern = vector<uint64_t>(PIs.size());
-                        // cout << "Updating by UNSAT... " << endl;
-                        // cout << "Total #FEC Group = " << SimGroups.size() << endl;
                         numPattern = 0;
                         // restart again
                         i = 0;
@@ -353,12 +350,9 @@ vector<vector<pair<CirGate*, bool>>> CirMgr::fraigForGroup() {
                 equalGroup.clear();
             }
             if (!newGroup.empty()) {
-                // cout << "currentNewSize: " << newGroup.size() << endl;
                 SimGroups.push_back(newGroup);
                 newGroup.clear();
             }
-            // cout << "Leave " << i << " , size: " << SimGroups[i].size() << endl;
-            // cout << "\rTotal #FEC Group = " << SimGroups.size() << endl;
         }
     }
     // cout << "END..." << endl;
@@ -374,5 +368,28 @@ vector<vector<pair<CirGate*, bool>>> CirMgr::fraigForGroup() {
     // remove CONST gate
     if (!equalGroups.empty())
         if (equalGroups[0][0].first->getTypeName() == "CONST") equalGroups[0].erase(equalGroups[0].begin());
-    return equalGroups;
+
+    // remove the same group
+    set<int> tmp;
+    vector<set<int>> groupBySet;
+    for (size_t i = 0; i < equalGroups.size(); ++i) {
+        for (size_t j = 0; j < equalGroups[i].size(); ++j) {
+            tmp.insert(equalGroups[i][j].first->getId());
+        }
+        groupBySet.push_back(tmp);
+        tmp.clear();
+    }
+    vector<vector<pair<CirGate*, bool>>> new_equalGroups;
+    bool uniqueFlag = true;
+    for (size_t i = 0; i < equalGroups.size(); ++i) {
+        for (size_t j = 0; j < equalGroups.size(); ++j) {
+            if (i == j) continue;
+            if(groupBySet[i]==groupBySet[j]) uniqueFlag=false;
+            if (std::includes(groupBySet[j].begin(), groupBySet[j].end(), groupBySet[i].begin(), groupBySet[i].end())) uniqueFlag = false;
+        }
+        if (uniqueFlag) new_equalGroups.push_back(equalGroups[i]);
+        uniqueFlag = true;
+    }
+
+    return new_equalGroups;
 }
