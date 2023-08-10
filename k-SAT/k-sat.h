@@ -47,6 +47,10 @@ public:
 
   void initialize() {
     reset();
+    // std::cout << kissat_get_option(_solver, "quiet");
+    kissat_set_option(_solver, "quiet", 1);
+    // std::cout << kissat_get_option(_solver, "quiet");
+
   }
 
   void reset() {
