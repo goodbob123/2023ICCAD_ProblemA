@@ -1,3 +1,9 @@
+#arg check
+if [[ ("$#" -ne 1) || ( ( "$1" != "good" ) && ( "$1" != "bad" ) ) ]]; then
+  echo "Usage: $0 <good/bad>" >&2
+  exit 1
+fi
+
 # abc
 git clone https://github.com/berkeley-abc/abc
 cd abc
@@ -19,9 +25,11 @@ sed -e '1618,1619 c \        Abc_NtkForEachCi( pNtk, pObj, k )\n            fpri
 sed -e '1620 c \        fprintf(file, "\\n" );' src/base/abci/abcPrint.c > src/base/abci/tempPrint.c
 sed -e '1625 a \    fclose(file);' src/base/abci/tempPrint.c > src/base/abci/abcPrint.c
 
-#rm -rf src/base/abc/tempDfs.c
-#sed -e '900 c \        if ( Abc_ObjIsCo(ppNodes[i]) && ppNodes[i]->vFanins.pArray[0] != 0 )' src/base/abc/abcDfs.c > src/base/abc/tempDfs.c
-#rm -rf src/base/abc/abcDfs.c; mv src/base/abc/tempDfs.c src/base/abc/abcDfs.c;
+if [ "$1" == "good" ]; then
+  rm -rf src/base/abc/tempDfs.c
+  sed -e '900 c \        if ( Abc_ObjIsCo(ppNodes[i]) && ppNodes[i]->vFanins.pArray[0] != 0 )' src/base/abc/abcDfs.c > src/base/abc/tempDfs.c
+  rm -rf src/base/abc/abcDfs.c; mv src/base/abc/tempDfs.c src/base/abc/abcDfs.c;
+fi
 
 # make "abc" static library
 make libabc.a
