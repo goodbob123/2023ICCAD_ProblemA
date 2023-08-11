@@ -444,12 +444,23 @@ void BMatchSolver::outputPreprocess() {
     //*/
     cerr << "outputPreprocess end" << endl;
 }
-
+void BMatchSolver::setOutMgr() {
+    outMgr.setPorts(f, g);
+    outMgr.setBuses(fBus, gBus);
+    outMgr.setCirMgr(c1, c2);
+    assert(y.size() >= x.size());
+    cout << y.size() << " " << x.size() << endl;
+    outMgr.setInputBias(y.size() - x.size());
+    if (!outMgr.init()) {
+        cerr << "outMgr not correctly set" << endl;
+        assert(0);
+    }
+}
 void BMatchSolver::run() {
     bool considerAll = false;
     int prevTime = 0;
     cout << "generate output heuristic order" << endl;
-    outMgr.init(f, g, fBus, gBus);
+    setOutMgr();
     cerr << "start run..." << endl;
     // for heuristic
     bool toStep = true;
@@ -562,16 +573,16 @@ void BMatchSolver::run() {
                 if (negation[i][k] == 1) currentResult.insert(d[gid][fid].matrixVar);
                 else currentResult.insert(c[gid][fid].matrixVar);
             }
-            cout << "start solving for: " << endl;
-            for (auto v: currentResult) cout << v << " ";
-            cout << endl;
+            // cout << "start solving for: " << endl;
+            // for (auto v: currentResult) cout << v << " ";
+            // cout << endl;
             if (isValidMo(currentResult)) {
-                cout << "solved!" << endl;
+                // cout << "solved!" << endl;
                 negation[validSolNum] = negation[i];
                 ++validSolNum;
                 if (!considerAll) break;
             }
-            cout << "not solve!" << endl;
+            // cout << "not solve!" << endl;
         }
         cout << "r3" << endl;
         if (!considerAll) assert(validSolNum < 2);
