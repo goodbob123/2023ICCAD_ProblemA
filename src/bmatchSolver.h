@@ -173,8 +173,9 @@ class Order
             support_atri = gport_ptr->nofSupport();
             support_span_atri = gport_ptr->nofSupport() - fport_ptr->nofSupport();
             bus_atri = (fBus_ptr->getBusSize() == gBus_ptr->getBusSize());
+            cone_atri = gport_ptr->getCoverage();
             cone_span_atri = gport_ptr->getCoverage() - fport_ptr->getCoverage();
-            if (cone_span_atri < 0) cone_span_atri = -cone_span_atri;
+            //if (cone_span_atri < 0) cone_span_atri = -cone_span_atri;
         }
         friend class Comparator;
         friend class OutPortMgr;
@@ -351,6 +352,7 @@ class Order
 
         size_t grp;
         size_t support_atri;
+        size_t cone_atri;
         int support_span_atri;
         int cone_span_atri;
         bool bus_atri;
@@ -368,11 +370,13 @@ class Comparator {
             assert(a->support_span_atri >= 0);
             assert(b->support_span_atri >= 0);
             if (a->support_atri == b->support_atri) {
-                if (a->support_span_atri == b->support_span_atri) {
-                    if (a->cone_span_atri == b->cone_span_atri) {
-                        return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
-                    } else return a->cone_span_atri < b->cone_span_atri;
-                } else return a->support_span_atri < b->support_span_atri;
+                if (a->cone_atri == b->cone_atri) {
+                    if (a->support_span_atri == b->support_span_atri) {
+                        if (a->cone_span_atri == b->cone_span_atri) {
+                            return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
+                        } else return a->cone_span_atri > b->cone_span_atri;
+                    } else return a->support_span_atri > b->support_span_atri;
+                } else return a->cone_atri < b->cone_atri;
             } else return a->support_atri < b->support_atri;
         }
         bool operator() (const set<int>& a, const set<int>& b) {
@@ -837,16 +841,6 @@ class BMatchSolver {
     void busConstraint();
     void testOutputMgr();
     void interactiveSolve();
-    void printDebug() {
-        return;
-        for (int i = 0; i < debug.size(); ++i) {
-            for (int j = 0; j < debug[0].size(); ++j) {
-                cerr << debug[i][j] << " ";
-            }
-            cerr << endl;
-        }
-        cerr << endl;
-    }
 
    protected:
     void genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aag2);
@@ -918,5 +912,8 @@ class BMatchSolver {
 
     // file
     char* file_match;
-    vector<vector<bool>> debug;
+
+    size_t matrixSolverInstance;
+    size_t matrixSolverPeriodInstance;
+    double previousTime;
 };
