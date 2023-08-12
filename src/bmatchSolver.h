@@ -790,6 +790,8 @@ class BMatchSolver {
     void busConstraint();
     void testOutputMgr();
     void interactiveSolve();
+    void printPossibleM(bool mi, bool mo);
+    void possibleMethod();
 
    protected:
     void genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aag2);
@@ -818,6 +820,8 @@ class BMatchSolver {
     void connectBus(Var connectVar, const set<int>& bus1, const set<int>& bus2);
     void assumeInputRedundnatFromOutput(const set<int>& input1, const set<int>& input2);
 
+    bool checkPossibleMi();
+    bool checkPossibleMo();
     // SAT Solver
     SatSolver matrixSolver, miterSolver;
     SatSolver outputSolver;
@@ -864,4 +868,7 @@ class BMatchSolver {
     size_t matrixSolverInstance;
     size_t matrixSolverPeriodInstance;
     double previousTime;
+
+    vector<vector<bool>> possibleMi;
+    vector<vector<bool>> possibleMo;
 };
