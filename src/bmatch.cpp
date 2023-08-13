@@ -546,8 +546,8 @@ int main(int argc, char* argv[]) {
     bmatchSolver.genFuncSupport(support);
     bmatchSolver.inputPreprocess();
     bmatchSolver.outputPreprocess();
-    // for (int i = 0; i < 10; ++i)
-    // bmatchSolver.simulate();
+    // bmatchSolver.printPossibleM(true, true);
+    // bmatchSolver.possibleMethod();
     bmatchSolver.readBusInfo(bus, true);
     bmatchSolver.readBusInfo(bus, false);
     bmatchSolver.printInfo();
@@ -557,7 +557,6 @@ int main(int argc, char* argv[]) {
     //cin >> temp;
     //if (temp == 1)
         //bmatchSolver.busConstraint();
-    
     cerr << "Enter 1 for interactive mode: ";
     int interactive;
     cin >> interactive;

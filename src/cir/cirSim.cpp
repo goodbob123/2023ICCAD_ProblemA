@@ -291,6 +291,9 @@ void CirMgr::findNecessary(CirGate* g, set<int>& set, int& patternShift) {
         findNecessary(all[g->fanin0id], set, patternShift);
         return;
     }
+    if (g->type == CONST_GATE) {
+        return;
+    }
     // when g = 1 -> care both fanin
     if (((g->pattern >> patternShift) & 1) == 1) {
         findNecessary(all[g->fanin0id], set, patternShift);
