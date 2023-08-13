@@ -72,7 +72,7 @@ class BusInfo
         BusInfo(size_t _id, set<int>& _bus, bool _glike) {
             bus_id = _id;
             busPort = &_bus;
-            glike = _glike;
+            glike = _glike; // i.e. can connect only once
             remain_bus = _bus.size();
             connectBus = vector<BusInfo*> ();
         }
@@ -89,7 +89,7 @@ class BusInfo
         }
         bool isFull() { return (remain_bus == 0); }
         bool isMatched(BusInfo* b) {
-            if (!b->isConnect() || !isConnect()) return false;
+            // if (!b->isConnect() || !isConnect()) return false;
             for (size_t i = 0; i < connectBus.size(); ++i) {
                 if (b == connectBus[i]) return true;
             }
@@ -102,7 +102,7 @@ class BusInfo
             else return true;
         }
         void connectTo(BusInfo* b) {
-            cout << "connectBus" << endl;
+            // cout << "connectBus" << endl;
             // if (!canMatch(b) && !isMatched(b)) {
             //     cout << "badconnection" << endl;
             //     assert(false);
@@ -132,6 +132,27 @@ class BusInfo
             connectBus.pop_back();
             // cout << "suc popback" << endl;
             return bptr;
+        }
+        void printBus() {
+            if (bus_id == 0) cerr << "[" <<*(busPort->begin()) << "]";
+            else cerr << bus_id;
+        }
+        void printBusInfo() {
+            printBus();
+            cerr << " : ";
+            for (set<int>::iterator itr = busPort->begin(); itr != busPort->end(); ++itr) {
+                cerr << *itr << " ";
+            }
+            cout << endl;
+        }
+        void printBusConnect() {
+            printBus();
+            cerr << " ("<< remain_bus << " , " << busPort->size() << "): ";
+            for (size_t i = 0; i < connectBus.size(); ++i) {
+                connectBus[i]->printBus();
+                cerr << " ";
+            }
+            cout << endl;
         }
     private:
         // size_t bus_size;
@@ -250,13 +271,13 @@ class Order
             is_pos = false;
         }
 
-        Order* backToPre() {    
+        Order* backToPre(bool just_back = false) {    
             // one step of backtrack
             // return 0 if no Pre
             Order* pre = assign_pre;
             if (pre != 0) {
                 assert(assign_pre->en);
-                pre->assign_nxt = order_nxt;
+                if (!just_back) pre->assign_nxt = order_nxt;
             }
 
             // unassign
@@ -268,17 +289,17 @@ class Order
             updateForbidOrder(0);   // clear forbid_order
             if (!is_head && is_connect_bus) {
                 BusInfo* gBus_buf = fBus_ptr->disconnectBack();
-                if (gBus_buf != gBus_ptr) cout << "wrong" << endl;
+                assert(gBus_buf == gBus_ptr);
                 BusInfo* fBus_buf = gBus_ptr->disconnectBack();
-                if (fBus_buf != fBus_ptr) cout << "wrong" << endl;
-                is_connect_bus = false;
+                assert(fBus_buf == fBus_ptr);
             }
+            is_connect_bus = false;
 
             return pre;
         }
-        Order* backTrack() {
+        Order* backTrack(bool just_back = false) {
             // backTrack to get ready for next assignment
-            Order* pre = backToPre();
+            Order* pre = backToPre(just_back);
             if (pre == 0) return 0;
             while (pre->assign_nxt == 0 || pre->assign_nxt->isForbid() || pre->assign_nxt->isAssign()) {
                 if (pre->assign_nxt == 0) pre = pre->backToPre(); // no new assignment, need further backtrack
@@ -453,7 +474,7 @@ class OutPortMgr
             Buses gBusBuf = *gBusptr;
             sort(fBusBuf.begin(), fBusBuf.end(), Comparator());
             sort(gBusBuf.begin(), gBusBuf.end(), Comparator());
-            is_bus_one_to_one = is_bus_one_to_one && (fBusBuf.size() == gBusBuf.size());
+            is_bus_one_to_one = is_bus_one_to_one && (fBusBuf.size() == gBusBuf.size()) && is_one_to_one;
             if (is_bus_one_to_one) {
                 for (size_t i = 0; i < fBusBuf.size(); ++i) {
                     if (fBusBuf[i].size() != gBusBuf[i].size()) {
@@ -493,11 +514,11 @@ class OutPortMgr
             }
             return assign_current;
         }
-        Order* backTrack() {
+        Order* backTrack(bool just_back = false) {
             // backtrack
             if (assign_current->isHead()) cout << "at head" << endl;
             is_backtrack = true;
-            assign_current = assign_current->backTrack();
+            assign_current = assign_current->backTrack(just_back);
             return assign_current;
         }
         Order* getHead() { return assign_head; }
@@ -526,6 +547,22 @@ class OutPortMgr
                     else cout << "* ";
                 }
                 cout << endl;
+            }
+        }
+        void printBusInfo() {
+            for (size_t i = 0; i < fbus_map.size(); ++i) {
+                fbus_map[i]->printBusInfo();
+            }
+            for (size_t i = 0; i < gbus_map.size(); ++i) {
+                gbus_map[i]->printBusInfo();
+            }
+        }
+        void printBusConnection() {
+            for (size_t i = 0; i < fbus_map.size(); ++i) {
+                fbus_map[i]->printBusConnect();
+            }
+            for (size_t i = 0; i < gbus_map.size(); ++i) {
+                gbus_map[i]->printBusConnect();
             }
         }
 
@@ -781,26 +818,32 @@ class OutPortMgr
                 for (size_t i = 0; i < gbus_map.size(); ++i) {
                     if (is_bus_one_to_one) {
                         if (fbus_ptr->getBusSize() != gbus_map[i]->getBusSize()) continue;  // forbid by one to one already
-                        if (gbus_map[i] == gbus_ptr) continue;
                         assert(!fbus_ptr->canMatch(gbus_ptr));
+                        if (gbus_map[i] == gbus_ptr) continue;
                         forbidByBus(fbus_ptr, gbus_map[i]);
                     }
                     else {
-                        cout << "not done yet" << endl;
-                        assert(false);
+                        if (fbus_ptr->canMatch(gbus_map[i])) continue;
+                        if (gbus_map[i] == gbus_ptr) continue;
+                        forbidByBus(fbus_ptr, gbus_map[i]);
+                        // cout << "not done yet" << endl;
+                        // assert(false);
                         // todo
                     }
                 }
                 for (size_t i = 0; i < fbus_map.size(); ++i) {
                     if (is_bus_one_to_one) {
                         if (gbus_ptr->getBusSize() != fbus_map[i]->getBusSize()) continue;  // forbid by one to one already
-                        if (fbus_map[i] == fbus_ptr) continue;
                         assert(!gbus_ptr->canMatch(fbus_ptr));
+                        if (fbus_map[i] == fbus_ptr) continue;
                         forbidByBus(fbus_map[i], gbus_ptr);
                     }
                     else {
-                        cout << "not done yet" << endl;
-                        assert(false);
+                        if (fbus_map[i]->canMatch(gbus_ptr)) continue;
+                        if (fbus_map[i] == fbus_ptr) continue;
+                        forbidByBus(fbus_map[i], gbus_ptr);
+                        // cout << "not done yet" << endl;
+                        // assert(false);
                         // todo
                     }
                 }
@@ -812,7 +855,7 @@ class OutPortMgr
             set<int> gbusport = gbus->getBusPort();
             for (set<int>::iterator fitr = fbusport.begin(); fitr != fbusport.end(); ++fitr) {
                 for (set<int>::iterator gitr = gbusport.begin(); gitr != gbusport.end(); ++gitr) {
-                    cout << "forbid " << *fitr << " " << *gitr<< endl;
+                    // cout << "forbid " << *fitr << " " << *gitr<< endl;
                     assign_current->updateForbidOrder(&order_map[*gitr][*fitr]);
                 }
             }
