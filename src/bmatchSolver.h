@@ -886,6 +886,7 @@ class BMatchSolver {
     void interactiveSolve();
     void printPossibleM(bool mi, bool mo);
     void possibleMethod();
+    bool finalcheck();
 
    protected:
     void genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aag2);

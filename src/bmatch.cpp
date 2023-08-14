@@ -571,7 +571,7 @@ int main(int argc, char* argv[]) {
     }
 
 
-
+    bmatchSolver.finalcheck();
     remove("1.aag");
     remove("2.aag");
     remove("circuit_1.aag");

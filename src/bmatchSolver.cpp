@@ -1669,3 +1669,36 @@ bool BMatchSolver::checkPossibleMo() {
     }
     return modify;
 }
+
+bool BMatchSolver::finalcheck() {
+    miterSolver.assumeRelease();
+    for(int i = 0; i < ans_a.size(); i++){
+        for(int j = 0; j < ans_a[0].size(); j++){
+            miterSolver.assumeProperty(a[i][j].miterVar, ans_a[i][j]);
+        }
+    }
+    for(int i = 0; i < ans_b.size(); i++){
+        for(int j = 0; j < ans_b[0].size(); j++){
+            miterSolver.assumeProperty(b[i][j].miterVar, ans_b[i][j]);
+        }
+    }
+    for(int i = 0; i < ans_c.size(); i++){
+        for(int j = 0; j < ans_c[0].size(); j++){
+            miterSolver.assumeProperty(c[i][j].miterVar, ans_c[i][j]);
+        }
+    }
+    for(int i = 0; i < ans_d.size(); i++){
+        for(int j = 0; j < ans_d[0].size(); j++){
+            miterSolver.assumeProperty(d[i][j].miterVar, ans_d[i][j]);
+        }
+    }
+
+    if(miterSolve()){
+        cout<<"good"<<endl;
+        return true;
+    }
+    else{
+        cout<<"bad"<<endl;
+        return false;
+    }
+}
