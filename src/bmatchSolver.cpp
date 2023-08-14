@@ -23,50 +23,7 @@ void BMatchSolver::init(ifstream& portMapping, ifstream& aag1, ifstream& aag2, c
     bestScore = 0;
 }
 
-void BMatchSolver::testOutputMgr() {  // pushPort
 
-    // cout << "t0" << endl;
-    // outMgr.step();
-    // outMgr.printAssign();
-    // outMgr.step();
-    // outMgr.printAssign();
-    // outMgr.backTrack();
-    // outMgr.printAssign();
-    // outMgr.step();
-    // outMgr.printAssign();
-    // outMgr.step();
-    // outMgr.printAssign();
-    // outMgr.step();
-    // outMgr.printAssign();
-    // outMgr.backTrack();
-    // outMgr.printAssign();
-    // outMgr.step();
-    // outMgr.printAssign();
-    // outMgr.step();
-    // outMgr.printAssign();
-    // outMgr.backTrack();
-    // outMgr.printAssign();
-    // outMgr.step();
-    // outMgr.printAssign();
-    Order* cur = outMgr.getHead();
-    // cout << cur << endl;
-    // o_mgr.printAssign();
-    while (cur != 0) {
-        // cur->printMapping();
-        // cout << (o_mgr.isBacktrack() ? "T" : "F") << endl;
-        vector<Order*> assignment = outMgr.getAllAssign();
-        for (auto assign: assignment) {
-            assign->printMapping();
-        }
-        cout << "____" << endl;
-        outMgr.printAssign();
-        cout << "____" << endl;
-        cur = outMgr.step();
-        // cout << "____" << endl;
-        // cur->printLink();
-    }
-
-}
 
 void BMatchSolver::genFuncSupport(ifstream& in) {
     /*
@@ -460,17 +417,30 @@ void BMatchSolver::outputPreprocess() {
     //*/
     cerr << "outputPreprocess end" << endl;
 }
-
+void BMatchSolver::setOutMgr() {
+    outMgr.setPorts(f, g);
+    outMgr.setBuses(fBus, gBus);
+    outMgr.setCirMgr(c1, c2);
+    assert(y.size() >= x.size());
+    cout << y.size() << " " << x.size() << endl;
+    outMgr.setAssumption();
+    outMgr.setInputBias(y.size() - x.size());
+    if (!outMgr.init()) {
+        cerr << "outMgr not correctly set" << endl;
+        assert(0);
+    }
+}
 void BMatchSolver::run() {
     bool considerAll = false;
     int prevTime = 0;
     cout << "generate output heuristic order" << endl;
-    outMgr.init(f, g, fBus, gBus);
+    setOutMgr();
     cerr << "start run..." << endl;
     // for heuristic
     bool toStep = true;
     Order* cur = outMgr.getHead();
 
+    outMgr.printBusInfo();
     outMgr.printAssign();
     for (auto assign: outMgr.getAllAssign()) {
         assign->printMapping();
@@ -531,13 +501,15 @@ void BMatchSolver::run() {
             cout << "No output pairs found!" << endl;
             break;
         }
-        cout << "assignment: " << endl;
+        
         outputPairs = outMgr.getAllAssign();
-        outMgr.printAssign();
-        for (auto assign: outputPairs) {
-            assign->printMapping();
-        }
-        cout << "__________" << endl;
+        // cout << "assignment: " << endl;
+        // outMgr.printAssign();
+        // for (auto assign: outputPairs) {
+        //     assign->printMapping();
+        // }
+        // outMgr.printBusConnection();
+        // cout << "__________" << endl;
         cout << "r1" << endl;
 
         vector<vector<bool> > negation(1, vector<bool> ());
@@ -578,16 +550,16 @@ void BMatchSolver::run() {
                 if (negation[i][k] == 1) currentResult.insert(d[gid][fid].matrixVar);
                 else currentResult.insert(c[gid][fid].matrixVar);
             }
-            cout << "start solving for: " << endl;
-            for (auto v: currentResult) cout << v << " ";
-            cout << endl;
+            // cout << "start solving for: " << endl;
+            // for (auto v: currentResult) cout << v << " ";
+            // cout << endl;
             if (isValidMo(currentResult)) {
-                cout << "solved!" << endl;
+                // cout << "solved!" << endl;
                 negation[validSolNum] = negation[i];
                 ++validSolNum;
                 if (!considerAll) break;
             }
-            cout << "not solve!" << endl;
+            // cout << "not solve!" << endl;
         }
         cout << "r3" << endl;
         if (!considerAll) assert(validSolNum < 2);
@@ -634,24 +606,25 @@ void BMatchSolver::outputAns() {
     cout << "----------Optimal Matching----------" << endl;
     cout << "Best Score: " << bestScore << endl
          << endl;
-    cout << "Input matrix: " << endl;
-    for (int i = 0; i < ans_a.size(); ++i) {
-        for (int j = 0; j < ans_a[0].size(); ++j) {
-            cout << ans_a[i][j] << " ";
-            cout << ans_b[i][j] << " ";
-        }
-        cout << endl;
-    }
-    cout << endl;
-    cout << "Output matrix: " << endl;
-    for (int i = 0; i < ans_c.size(); ++i) {
-        for (int j = 0; j < ans_c[0].size(); ++j) {
-            cout << ans_c[i][j] << " ";
-            cout << ans_d[i][j] << " ";
-        }
-        cout << endl;
-    }
-    cout << endl;
+    // cout << "Input matrix: " << endl;
+    // for (int i = 0; i < ans_a.size(); ++i) {
+    //     for (int j = 0; j < ans_a[0].size(); ++j) {
+    //         cout << ans_a[i][j] << " ";
+    //         cout << ans_b[i][j] << " ";
+    //     }
+    //     cout << endl;
+    // }
+    // cout << endl;
+    // cout << "Output matrix: " << endl;
+    // for (int i = 0; i < ans_c.size(); ++i) {
+    //     for (int j = 0; j < ans_c[0].size(); ++j) {
+    //         cout << ans_c[i][j] << " ";
+    //         cout << ans_d[i][j] << " ";
+    //     }
+    //     cout << endl;
+    // }
+    // cout << endl;
+
     // output to file as required format
     // INGROUP
     ofstream out(file_match);
@@ -1256,28 +1229,28 @@ bool BMatchSolver::miterSolve() {
         // Block answer
 
         cout << "Find a valid mapping!" << endl;
-        cout << "Input matrix:" << endl;
+        // cout << "Input matrix:" << endl;
         for (int i = 0; i < y.size(); ++i) {
             for (int j = 0; j < x.size() + 1; ++j) {
-                cout << matrixSolver.getValue(a[i][j].matrixVar) << " ";
-                cout << matrixSolver.getValue(b[i][j].matrixVar) << " ";
+                // cout << matrixSolver.getValue(a[i][j].matrixVar) << " ";
+                // cout << matrixSolver.getValue(b[i][j].matrixVar) << " ";
                 ans_a[i][j] = matrixSolver.getValue(a[i][j].matrixVar);
                 ans_b[i][j] = matrixSolver.getValue(b[i][j].matrixVar);
             }
-            cout << endl;
+            // cout << endl;
         }
-        cout << "Output matrix:" << endl;
+        // cout << "Output matrix:" << endl;
         vector<Lit> lits;
         for (int i = 0; i < fStar.size(); ++i) {
             for (int j = 0; j < f.size(); ++j) {
-                cout << matrixSolver.getValue(c[i][j].matrixVar) << " ";
-                cout << matrixSolver.getValue(d[i][j].matrixVar) << " ";
+                // cout << matrixSolver.getValue(c[i][j].matrixVar) << " ";
+                // cout << matrixSolver.getValue(d[i][j].matrixVar) << " ";
                 ans_c[i][j] = matrixSolver.getValue(c[i][j].matrixVar);
                 ans_d[i][j] = matrixSolver.getValue(d[i][j].matrixVar);
                 lits.push_back(ans_c[i][j] ? ~Lit(outputC[i][j]) : Lit(outputC[i][j]));
                 lits.push_back(ans_d[i][j] ? ~Lit(outputD[i][j]) : Lit(outputD[i][j]));
             }
-            cout << endl;
+            // cout << endl;
         }
         outputSolver.addCNF(lits);
         int score = getScore();
@@ -1695,4 +1668,79 @@ bool BMatchSolver::checkPossibleMo() {
         }
     }
     return modify;
+    
+void BMatchSolver::testOutputMgr() {  // pushPort
+
+    setOutMgr();
+    // cout << "t0" << endl;
+    cout << "s" << endl;
+    outMgr.step();
+    outMgr.printAssign();
+    outMgr.printBusConnection();
+    cout << "b" << endl;
+    outMgr.backTrack(true);
+    outMgr.printAssign();
+    outMgr.printBusConnection();
+    cout << "s" << endl;
+    outMgr.step();
+    outMgr.printAssign();
+    outMgr.printBusConnection();
+    cout << "b" << endl;
+    outMgr.backTrack();
+    outMgr.printAssign();
+    outMgr.printBusConnection();
+    cout << "s" << endl;
+    outMgr.step();
+    outMgr.printAssign();
+    outMgr.printBusConnection();
+    cout << "s" << endl;
+    outMgr.step();
+    outMgr.printAssign();
+    outMgr.printBusConnection();
+    cout << "s" << endl;
+    outMgr.step();
+    outMgr.printAssign();
+    outMgr.printBusConnection();
+    cout << "b" << endl;
+    outMgr.backTrack(true);
+    outMgr.printAssign();
+    outMgr.printBusConnection();
+    cout << "b" << endl;
+    outMgr.backTrack(true);
+    outMgr.printAssign();
+    outMgr.printBusConnection();
+    cout << "s" << endl;
+    outMgr.step();
+    outMgr.printAssign();
+    outMgr.printBusConnection();
+    cout << "s" << endl;
+    outMgr.step();
+    outMgr.printAssign();
+    outMgr.printBusConnection();
+    cout << "b" << endl;
+    outMgr.backTrack();
+    outMgr.printAssign();
+    outMgr.printBusConnection();
+    cout << "s" << endl;
+    outMgr.step();
+    outMgr.printAssign();
+    outMgr.printBusConnection();
+    cout << endl;
+    // Order* cur = outMgr.getHead();
+    // // cout << cur << endl;
+    // // o_mgr.printAssign();
+    // while (cur != 0) {
+    //     // cur->printMapping();
+    //     // cout << (o_mgr.isBacktrack() ? "T" : "F") << endl;
+    //     vector<Order*> assignment = outMgr.getAllAssign();
+    //     for (auto assign: assignment) {
+    //         assign->printMapping();
+    //     }
+    //     cout << "____" << endl;
+    //     outMgr.printAssign();
+    //     cout << "____" << endl;
+    //     cur = outMgr.step();
+    //     // cout << "____" << endl;
+    //     // cur->printLink();
+    // }
 }

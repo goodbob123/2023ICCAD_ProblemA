@@ -566,9 +566,9 @@ int main(int argc, char* argv[]) {
     }
     else {
         bmatchSolver.run();
+        // bmatchSolver.testOutputMgr();
         cout << "finish run" << endl;
     }
-    // bmatchSolver.testOutputMgr();
 
 
 
