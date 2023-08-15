@@ -1265,10 +1265,10 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
         //     }
         // }
         for (int j = 0; j < redundantInput_x.size(); ++j) {
-            miterSolver.assumeProperty(x[j].getVar(), false);
+            miterSolver.assumeProperty(x[redundantInput_x[j]].getVar(), false);
         }
         for (int i = 0; i < redundantInput_y.size(); ++i) {
-            miterSolver.assumeProperty(y[i].getVar(), false);
+            miterSolver.assumeProperty(y[redundantInput_y[i]].getVar(), false);
         }
 
         if (miterSolve()) {  // UNSAT -> find a valid mapping
