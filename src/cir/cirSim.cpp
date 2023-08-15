@@ -150,19 +150,22 @@ void CirMgr::fileSim(ifstream& patternFile) {
 bool CirMgr::findPattern(CirGate* g, vector<bool>& isUpdate) {
     // undefined
     if (g == 0) {
+        assert(0);
         return false;
     } else if (g->type == PI_GATE) {
         if (isNoPattern) return true;
         return (inputPattern[inputId2Pattern[g->id]] != g->pattern);
     } else if (g->type == CONST_GATE) {
         g->pattern = 0;
+        if (isNoPattern) return true;
         return false;
     } else if (g->type == PO_GATE) {
         if (findPattern(all[g->fanin0id], isUpdate)) {
+            uint64_t fanin0 = all[g->fanin0id]->type == PI_GATE ? inputPattern[inputId2Pattern[g->fanin0id]] : all[g->fanin0id]->pattern;
             if (g->fanin0cp)
-                g->pattern = ~all[g->fanin0id]->pattern;
+                g->pattern = ~fanin0;
             else
-                g->pattern = all[g->fanin0id]->pattern;
+                g->pattern = fanin0;
             return true;
         } else {
             return false;
@@ -195,35 +198,27 @@ bool CirMgr::findPattern(CirGate* g, vector<bool>& isUpdate) {
     }
 }
 void CirMgr::simulate64times() {
-    // cout << "START SIM..." << endl;
     vector<uint64_t> outputPattern(POs.size());
     bool result;
     vector<bool> isUpdate(all.size(), false);
 
     for (size_t i = 0; i < POs.size(); ++i) {
-        // cout << "START: " << POs[i]->id << endl;
         result = findPattern(POs[i], isUpdate);
-        // cout << "-----------------------------------------" << endl;
     }
     for (size_t i = 0; i < PIs.size(); ++i) {
         PIs[i]->pattern = inputPattern[i];
     }
     isNoPattern = false;
-    // if (_simLog != 0) {
-    //     writeLog();
-    // }
     if (SimGroups.empty()) {
         vector<pair<CirGate*, bool>> temp;
         all[0]->pattern = 0;
         temp.push_back(make_pair(all[0], false));
         for (size_t i = 0; i < POs.size(); ++i) {
             temp.push_back(make_pair(POs[i], false));
-            // temp.push_back(make_pair(AIGs[i],false));
         }
         SimGroups.push_back(temp);
     }
 
-    // cout << "start gen!" << endl;
     // gen group
     for (size_t i = 0; i < SimGroups.size(); ++i) {
         vector<pair<CirGate*, bool>> temp;
@@ -351,67 +346,17 @@ vector<set<int>> CirMgr::getNecessary(const vector<int>& assign_Input, const vec
     set<int> necessry;
     int patternShift = 0;
     for (int i = 0; i < POs.size(); ++i) {
-        // cout << "output: " << i << " , now pattern: " << (POs[i]->pattern & 1) << endl;
         necessry.clear();
         findNecessary(POs[i], necessry, patternShift);
         necessarys.push_back(necessry);
     }
+    // cout << "Necessarys" << endl;
+    // for (int i = 0; i < necessarys.size(); ++i) {
+    //     cout << i << ": ";
+    //     for (set<int>::iterator it = necessarys[i].begin(); it != necessarys[i].end(); it++)
+    //         cout << *it << " ";
+    //     cout << endl;
     return necessarys;
-
-    ///  ignore --------------------
-    // for (int i = 0; i < POs.size(); ++i) {
-    //     if (POs[i]->pattern & 1 != assign_Output[i]) {
-    //         // cout << "not right!" << endl;
-    //         assert(0);
-    //     }
-    // }
-    // cout << "Origin Input:";
-    // for (int i = 0; i < inputSize; ++i) cout << assign_Input[i] << " ";
-    // cout << endl;
-    // // cout << " right!" << endl;
-    // // i = the number of inputpattern, should flip every input once
-    // for (int i = 0; i < ceil(inputSize / 64); ++i) {
-    //     // pos = the position should be flip
-
-    //     // prepare simulate inputpattern
-    //     for (int pos = 0; pos < 64; ++pos) {
-    //         if (i * 63 + pos >= inputSize) {
-    //             break;
-    //         }
-    //         uint64_t flipHelper = 0;
-    //         flipHelper += 1;
-    //         flipHelper = flipHelper << pos;
-    //         inputPattern[i * 64 + pos] = inputPattern[i * 64 + pos] ^ flipHelper;
-    //     }
-
-    //     for (int j = 0; j < inputSize; ++j) {
-    //         for (int k = 0; k < inputSize; ++k) {
-    //             cout << ((inputPattern[k] >> j) & 1) << " ";
-    //         }
-    //         cout << endl;
-    //     }
-    //     simulate64times();
-
-    //     // verify the necessary
-    //     //  check if the output also flip -> is necessary input
-    //     for (int pos = 0; pos < 64; ++pos) {
-    //         for (int j = 0; j < POs.size(); ++j) {
-    //             if (pos + 63 * i >= inputSize) {
-    //                 // cout << "partial end" << endl;
-    //                 return necessary;
-    //             }
-    //             int outputValue = ((POs[j]->pattern >> pos) & 1);
-    //             if (outputValue != assign_Output[j]) {
-    //                 // find necessary input
-    //                 necessary[j].insert(pos + 63 * i);
-    //                 // cout << "The output " << j << " is depents on " << pos + 63 * i << endl;
-    //             }
-    //         }
-    //     }
-    //     // reset
-    //     inputPattern = originInputPattern;
-    // }
-    ///  ignore --------------------
 }
 
 

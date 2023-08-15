@@ -825,6 +825,7 @@ class BMatchSolver {
     void assumeMo();
     void connectBus(Var connectVar, const set<int>& bus1, const set<int>& bus2);
     void assumeInputRedundnatFromOutput(const set<int>& input1, const set<int>& input2);
+    bool finalCheckAns();
 
     bool checkPossibleMi();
     bool checkPossibleMo();

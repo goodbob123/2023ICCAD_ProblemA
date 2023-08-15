@@ -548,6 +548,7 @@ int main(int argc, char* argv[]) {
     bmatchSolver.outputPreprocess();
     // bmatchSolver.printPossibleM(true, true);
     // bmatchSolver.possibleMethod();
+    // bmatchSolver.simulate();
     bmatchSolver.readBusInfo(bus, true);
     bmatchSolver.readBusInfo(bus, false);
     bmatchSolver.printInfo();
@@ -570,7 +571,7 @@ int main(int argc, char* argv[]) {
     // bmatchSolver.testOutputMgr();
 
 
-
+    
     remove("1.aag");
     remove("2.aag");
     remove("circuit_1.aag");

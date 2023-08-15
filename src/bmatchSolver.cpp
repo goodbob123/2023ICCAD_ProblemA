@@ -560,6 +560,7 @@ void BMatchSolver::run() {
             cout << "This must be the OPT with (#output_port(Circuit I) + "
                     "#output_port(Circuit II)) = "
                  << bestScore << endl;
+            finalCheckAns();
             break;
         }
 
@@ -1674,31 +1675,15 @@ void BMatchSolver::simulate() {
     for (int times = 0; times < 64; ++times) {
         for (int i = 0; i < fStar.size(); ++i) {
             for (int j = 0; j < f.size(); ++j) {
-                // if (times == 0) {
-                //     cout << "The f[" << j << "] pattern: " << assign_Output_f[times][j] << " supprot: ";
-                //     for (auto& s : f[j].supports) cout << s << " ";
-                //     cout << ", necessary : ";
-                //     for (auto& s : necessarys_f[times][j]) cout << s << " ";
-                //     cout << endl;
-                //     cout << "The g[" << i << "] pattern: " << assign_Output_g[times][i] << " supprot: ";
-                //     for (auto& s : g[i].supports) cout << s << " ";
-                //     cout << ", necessary : ";
-                //     for (auto& s : necessarys_g[times][i]) cout << s << " ";
-                //     cout << endl;
-                // }
                 // A(x_l= y_k) & B -> f!=g
                 // f=g -> ~A or ~B
                 // ( !(f=g) + ~A(x_l=y_k) + ~B)
-
                 if (assign_Output_g[times][i] !=
                     assign_Output_f[times][j]) {
-                    // cout << "( ~c[" << i << "][" << j << "]";
                     lits.push_back(~Lit(c[i][j].matrixVar));
                 } else {
-                    // cout << "( ~d[" << i << "][" << j << "]";
                     lits.push_back(~Lit(d[i][j].matrixVar));
                 }
-
                 for (int k = 0; k < y.size(); ++k) {
                     if (!necessarys_g[times][i].count(k))
                         continue;
@@ -1707,15 +1692,17 @@ void BMatchSolver::simulate() {
                             continue;
                         if (assign_Input_y[times][k] !=
                             assign_Input_x[times][l]) {
-                            // cout << "+ a[" << k << "][" << l << "]";
                             lits.push_back(Lit(a[k][l].matrixVar));
                         } else {
-                            // cout << "+ b[" << k << "][" << l << "]";
                             lits.push_back(Lit(b[k][l].matrixVar));
                         }
                     }
+                    if (assign_Input_y[times][k] != 0) {
+                        lits.push_back(Lit(a[k][x.size()].matrixVar));
+                    } else {
+                        lits.push_back(Lit(b[k][x.size()].matrixVar));
+                    }
                 }
-                // cout << ")" << endl;
                 matrixSolver.addCNF(lits);
                 lits.clear();
             }
@@ -1828,4 +1815,32 @@ bool BMatchSolver::checkPossibleMo() {
         }
     }
     return modify;
+}
+
+bool BMatchSolver::finalCheckAns() {
+    miterSolver.assumeRelease();
+    for (int i = 0; i < ans_a.size(); ++i) {
+        for (int j = 0; j < ans_a[0].size(); ++j) {
+            miterSolver.assumeProperty(a[i][j].miterVar,
+                                       ans_a[i][j]);
+            miterSolver.assumeProperty(b[i][j].miterVar,
+                                       ans_b[i][j]);
+        }
+    }
+    for (int i = 0; i < ans_c.size(); ++i) {
+        for (int j = 0; j < ans_c[0].size(); ++j) {
+            miterSolver.assumeProperty(c[i][j].miterVar,
+                                       ans_c[i][j]);
+            miterSolver.assumeProperty(d[i][j].miterVar,
+                                       ans_d[i][j]);
+        }
+    }
+    if (miterSolve()) {  // UNSAT -> find a valid mapping
+        // Update current answer and block answer
+        cout << "\033[1;32mCORRECT ANSWER\033[0m" << endl;
+        return true;
+    } else {
+        cout << "\033[1;31mWRONG ANSWER\033[0m" << endl;
+        return false;
+    }
 }
