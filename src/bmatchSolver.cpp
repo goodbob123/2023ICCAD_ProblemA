@@ -1,9 +1,10 @@
 #include "bmatchSolver.h"
 
+#include <iomanip>
 #include <map>
+#include <set>
 #include <string>
 #include <unordered_map>
-#include <iomanip>
 
 size_t Order::en_count= 0;
 
@@ -272,8 +273,66 @@ void BMatchSolver::initCircuit(ifstream& in1, ifstream& in2) {
     for (size_t i = 0; i < g.size(); ++i) {
         g[i].coverage = g_coverage[i];
     }
+    vector<vector<pair<int, bool>>> group_f, group_g;
+    getEqualGroup(group_f, group_g);
 }
 
+// int: f[0],f[1]... , bool: the phase to equal
+void BMatchSolver::getEqualGroup(vector<vector<pair<int, bool>>>& group_f, vector<vector<pair<int, bool>>>& group_g) {
+    // find equal group
+    if (!c1 || !c2) {
+        cout << "please init circuit first" << endl;
+        return;
+    }
+    c1->randomSim();
+    c2->randomSim();
+    vector<vector<pair<CirGate*, bool>>> equalGroup_1, equalGroup_2;
+    equalGroup_1 = c1->fraigForGroup();
+    equalGroup_2 = c2->fraigForGroup();
+
+    if (equalGroup_1.empty() || equalGroup_2.empty()) return;
+
+    for (int i = 0; i < c1->POs.size(); ++i) {
+        id2i[c1->POs[i]->getId()] = i;
+    }
+    for (int j = 0; j < c2->POs.size(); ++j) {
+        id2j[c2->POs[j]->getId()] = j;
+    }
+
+    vector<vector<pair<int, bool>>> equalGroup_1_n, equalGroup_2_n;
+
+    // translate from aig id to index (f[0],f[1]...)
+    vector<pair<int, bool>> temp;
+    for (size_t i = 0; i < equalGroup_1.size(); ++i) {
+        for (size_t j = 0; j < equalGroup_1[i].size(); ++j) {
+            temp.push_back(make_pair(id2i[equalGroup_1[i][j].first->getId()], equalGroup_1[i][j].second));
+        }
+        equalGroup_1_n.push_back(temp);
+        temp.clear();
+    }
+    for (size_t i = 0; i < equalGroup_2.size(); ++i) {
+        for (size_t j = 0; j < equalGroup_2[i].size(); ++j) {
+            temp.push_back(make_pair(id2j[equalGroup_2[i][j].first->getId()], equalGroup_2[i][j].second));
+        }
+        equalGroup_2_n.push_back(temp);
+        temp.clear();
+    }
+    group_f = equalGroup_1_n;
+    group_g = equalGroup_2_n;
+
+    cout << " ------------  Circuit 1 Equal Group Size: " << equalGroup_1.size() << " ------------" << endl;
+    for (size_t index_1 = 0; index_1 < equalGroup_1.size(); ++index_1) {
+        cout << setw(3) << equalGroup_1[index_1].size() << " ";
+    }
+    cout << endl;
+    cout << " ------------  Circuit 2 Equal Group Size: " << equalGroup_2.size() << " ------------" << endl;
+    for (size_t index_2 = 0; index_2 < equalGroup_2.size(); ++index_2) {
+        cout << setw(3) << equalGroup_2[index_2].size() << " ";
+    }
+    cout << endl;
+}
+
+// do not use the method
 void BMatchSolver::addEqualConstraint() {
     cout << "start to add equal constraint ..." << endl;
     c1->randomSim();
@@ -288,7 +347,7 @@ void BMatchSolver::addEqualConstraint() {
     for (int j = 0; j < c2->POs.size(); ++j) {
         id2j[c2->POs[j]->getId()] = j;
     }
-    
+
     // create output's Equal group mapping
     for (size_t index_1 = 0; index_1 < equalGroup_1.size(); ++index_1) {
         for (size_t index_2 = index_1; index_2 < equalGroup_2.size(); ++index_2) {
@@ -330,7 +389,7 @@ void BMatchSolver::addEqualConstraint() {
                                            equalGroup_2[index_2]);
         }
     }
-    delete c1, c2;
+
     cout<< "end to add equal constraint ..."<<endl;
 }
 
@@ -349,7 +408,6 @@ void BMatchSolver::outputPreprocess() {
             }
         }
     }
-    // addEqualConstraint();
     return;
     // map<int, vector<int>> fSupps;
     // map<int, vector<int>> gSupps;
@@ -442,7 +500,7 @@ void BMatchSolver::run() {
 
     outMgr.printBusInfo();
     outMgr.printAssign();
-    for (auto assign: outMgr.getAllAssign()) {
+    for (auto assign : outMgr.getAllAssign()) {
         assign->printMapping();
     }
     cout << "__________" << endl;
@@ -460,12 +518,12 @@ void BMatchSolver::run() {
     while (1) {
         int execTime = (clock() - START) / CLOCKS_PER_SEC;
         if (execTime - prevTime >= 10) {
-            if(execTime >= 3600){
-                cout<<"time limit reach\n";
-                cout<<bestScore<<endl;
-                return ;
+            if (execTime >= 3600) {
+                cout << "time limit reach\n";
+                cout << bestScore << endl;
+                return;
             }
-            cout <<"time: " << execTime << " seconds" << endl;
+            cout << "time: " << execTime << " seconds" << endl;
             prevTime = execTime;
         }
         if (bestScore == g.size() + f.size()) {
@@ -512,7 +570,7 @@ void BMatchSolver::run() {
         // cout << "__________" << endl;
         cout << "r1" << endl;
 
-        vector<vector<bool> > negation(1, vector<bool> ());
+        vector<vector<bool>> negation(1, vector<bool>());
         for (size_t i = 0; i < outputPairs.size(); ++i) {
             if (outputPairs[i]->isPos() && outputPairs[i]->isNeg()) {
                 size_t num = negation.size();
@@ -520,10 +578,12 @@ void BMatchSolver::run() {
                 for (size_t j = 0; j < num; ++j) negation.push_back(negation[j]);
                 for (size_t j = 0; j < num; ++j) negation[j].push_back(false);
                 for (size_t j = num; j < negation.size(); ++j) negation[j].push_back(true);
-            } 
-            else if (outputPairs[i]->isPos()) for (size_t j = 0; j < negation.size(); ++j) negation[j].push_back(false);
-            else if (outputPairs[i]->isNeg()) for (size_t j = 0; j < negation.size(); ++j) negation[j].push_back(true);
-            else assert(0);
+            } else if (outputPairs[i]->isPos())
+                for (size_t j = 0; j < negation.size(); ++j) negation[j].push_back(false);
+            else if (outputPairs[i]->isNeg())
+                for (size_t j = 0; j < negation.size(); ++j) negation[j].push_back(true);
+            else
+                assert(0);
 
             // for (auto vec: negation) {
             //     for (auto n: vec) cout << n << " ";
@@ -538,7 +598,7 @@ void BMatchSolver::run() {
         //     cout << endl;
         // }
         // cout << "\\|/" << endl;
-        
+
         size_t validSolNum = 0;
         for (size_t i = 0; i < negation.size(); ++i) {
             set<Var> currentResult;
@@ -547,8 +607,10 @@ void BMatchSolver::run() {
                 size_t fid = outputPairs[k]->getFid();
                 size_t gid = outputPairs[k]->getGid();
                 // cout << fid << " " << gid << endl;
-                if (negation[i][k] == 1) currentResult.insert(d[gid][fid].matrixVar);
-                else currentResult.insert(c[gid][fid].matrixVar);
+                if (negation[i][k] == 1)
+                    currentResult.insert(d[gid][fid].matrixVar);
+                else
+                    currentResult.insert(c[gid][fid].matrixVar);
             }
             // cout << "start solving for: " << endl;
             // for (auto v: currentResult) cout << v << " ";
@@ -575,18 +637,15 @@ void BMatchSolver::run() {
         assert(canPos || canNeg || negation.size() == 0);
         if (!canPos) outputPairs[end]->failPos();
         if (!canNeg) outputPairs[end]->failNeg();
-        
+
         toStep = negation.size() != 0;
         cout << "r4" << endl;
-
-
-
 
         // origin output SAT
         // set<Var> currentResult;
         // for (int k = 0; k < outputPairs.size(); ++k) {
         //     // origin : output SAT
-        //     currentResult.insert(outputPairs[k]); 
+        //     currentResult.insert(outputPairs[k]);
         //     // cout << "Solving isValidMo..." << endl;
         //     // bool result = isValidMo(currentResult);
         //     // if (!result) {
@@ -674,7 +733,7 @@ void BMatchSolver::outputAns() {
     }
     out << "END" << endl
         << endl;
-    
+
     out.close();
 }
 
@@ -984,7 +1043,7 @@ void BMatchSolver::genMiterConstraint() {
         miterSolver.addCNF(lits);
     }
 
-    // Output constrints
+    // Output constraints
     for (int i = 0; i < fStar.size(); ++i) {
         for (int j = 0; j < f.size(); ++j) {
             c[i][j].miterVar = miterSolver.newVar();
@@ -1267,6 +1326,18 @@ bool BMatchSolver::miterSolve() {
         // l_O = (g[i] != f[j]) ? ~c[i][j] : ~d[i][j]
         // l_I = (x[j] != y[i]) ? a[i][j] : b[i][j]
         vector<Lit> lits;
+
+        // partial assignment
+        vector<int> assign_x, assign_y, assign_f, assign_g;
+        vector<set<int>> necessary_f, necessary_g;
+        for (int i = 0; i < x.size(); ++i) assign_x.push_back(miterSolver.getValue(x[i].getVar()));
+        for (int i = 0; i < y.size(); ++i) assign_y.push_back(miterSolver.getValue(y[i].getVar()));
+        for (int i = 0; i < f.size(); ++i) assign_f.push_back(miterSolver.getValue(f[i].getVar()));
+        for (int i = 0; i < g.size(); ++i) assign_g.push_back(miterSolver.getValue(g[i].getVar()));
+
+        necessary_f = c1->getNecessary(assign_x, assign_f);
+        necessary_g = c2->getNecessary(assign_y, assign_g);
+
         for (int i = 0; i < fStar.size(); ++i) {
             for (int j = 0; j < f.size(); ++j) {
                 if (miterSolver.getValue(g[i].getVar()) !=
@@ -1277,10 +1348,12 @@ bool BMatchSolver::miterSolve() {
                 }
                 // TODO: and or or
                 for (int k = 0; k < y.size(); ++k) {
-                    if (!g[i].isSupport(k))
+                    // if (!g[i].isSupport(k))
+                    if (!necessary_g[i].count(k))
                         continue;
-                    for (int l = 0; l < x.size(); ++l) {  // +1 or not
-                        if (!f[j].isSupport(l))
+                    for (int l = 0; l < x.size(); ++l) {
+                        // if (!f[j].isSupport(l))
+                        if (!necessary_f[j].count(l))
                             continue;
                         if (miterSolver.getValue(y[k].getVar()) !=
                             miterSolver.getValue(x[l].getVar())) {
@@ -1561,9 +1634,56 @@ void BMatchSolver::assumeInputRedundnatFromOutput(const set<int>& input1, const 
     }
 }
 
+void BMatchSolver::simulate() {
+    cout << "start to simulate" << endl;
+    vector<vector<int>> assign_Input_x, assign_Output_f;
+    vector<vector<int>> assign_Input_y, assign_Output_g;
+    vector<vector<set<int>>> necessarys_f, necessarys_g;
+    vector<Lit> lits;
+    c1->randomSim2Necessary(assign_Input_x, assign_Output_f, necessarys_f);
+    c2->randomSim2Necessary(assign_Input_y, assign_Output_g, necessarys_g);
+
+    // total simulate 64 times (0~63)
+    for (int times = 0; times < 64; ++times) {
+        for (int i = 0; i < fStar.size(); ++i) {
+            for (int j = 0; j < f.size(); ++j) {
+                // A(x_l= y_k) & B -> f!=g
+                // f=g -> ~A or ~B
+                // ( !(f=g) + ~A(x_l=y_k) + ~B)
+                if (assign_Output_g[times][i] !=
+                    assign_Output_f[times][j]) {
+                    lits.push_back(~Lit(c[i][j].matrixVar));
+                } else {
+                    lits.push_back(~Lit(d[i][j].matrixVar));
+                }
+                for (int k = 0; k < y.size(); ++k) {
+                    if (!necessarys_g[times][i].count(k))
+                        continue;
+                    for (int l = 0; l < x.size(); ++l) {  // +1 or not
+                        if (!necessarys_f[times][j].count(l))
+                            continue;
+                        if (assign_Input_y[times][k] !=
+                            assign_Input_x[times][l]) {
+                            lits.push_back(Lit(a[k][l].matrixVar));
+                        } else {
+                            lits.push_back(Lit(b[k][l].matrixVar));
+                        }
+                    }
+                    if (assign_Input_y[times][k] != 0) {
+                        lits.push_back(Lit(a[k][x.size()].matrixVar));
+                    } else {
+                        lits.push_back(Lit(b[k][x.size()].matrixVar));
+                    }
+                }
+                matrixSolver.addCNF(lits);
+                lits.clear();
+            }
+        }
+    }
+}
 void BMatchSolver::interactiveSolve() {
     assumeMo();
-    while(1) {
+    while (1) {
         vector<Var> outputPairs;
         bool result = outputSolve(outputPairs);
         if (!result) {
@@ -1575,8 +1695,7 @@ void BMatchSolver::interactiveSolve() {
         if (isValidMo(currentResult)) {
             cerr << "Find valid input matrix!" << endl;
             assumeMo();
-        }
-        else {
+        } else {
             cerr << "No input matrix found!" << endl;
         }
     }
@@ -1670,35 +1789,30 @@ bool BMatchSolver::checkPossibleMo() {
     return modify;
 }
 
-bool BMatchSolver::finalcheck() {
+bool BMatchSolver::finalCheck() {
     miterSolver.assumeRelease();
-    for(int i = 0; i < ans_a.size(); i++){
-        for(int j = 0; j < ans_a[0].size(); j++){
-            miterSolver.assumeProperty(a[i][j].miterVar, ans_a[i][j]);
+    for (int i = 0; i < ans_a.size(); ++i) {
+        for (int j = 0; j < ans_a[0].size(); ++j) {
+            miterSolver.assumeProperty(a[i][j].miterVar,
+                                       ans_a[i][j]);
+            miterSolver.assumeProperty(b[i][j].miterVar,
+                                       ans_b[i][j]);
         }
     }
-    for(int i = 0; i < ans_b.size(); i++){
-        for(int j = 0; j < ans_b[0].size(); j++){
-            miterSolver.assumeProperty(b[i][j].miterVar, ans_b[i][j]);
+    for (int i = 0; i < ans_c.size(); ++i) {
+        for (int j = 0; j < ans_c[0].size(); ++j) {
+            miterSolver.assumeProperty(c[i][j].miterVar,
+                                       ans_c[i][j]);
+            miterSolver.assumeProperty(d[i][j].miterVar,
+                                       ans_d[i][j]);
         }
     }
-    for(int i = 0; i < ans_c.size(); i++){
-        for(int j = 0; j < ans_c[0].size(); j++){
-            miterSolver.assumeProperty(c[i][j].miterVar, ans_c[i][j]);
-        }
-    }
-    for(int i = 0; i < ans_d.size(); i++){
-        for(int j = 0; j < ans_d[0].size(); j++){
-            miterSolver.assumeProperty(d[i][j].miterVar, ans_d[i][j]);
-        }
-    }
-
-    if(miterSolve()){
-        cout<<"good"<<endl;
+    if (miterSolve()) {  // UNSAT -> find a valid mapping
+        // Update current answer and block answer
+        cout << "\033[1;32mCORRECT ANSWER\033[0m" << endl;
         return true;
-    }
-    else{
-        cout<<"bad"<<endl;
+    } else {
+        cout << "\033[1;31mWRONG ANSWER\033[0m" << endl;
         return false;
     }
 }

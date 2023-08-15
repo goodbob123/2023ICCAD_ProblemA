@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <bitset>
 #include <cassert>
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -36,11 +37,6 @@ using namespace std;
 /*   Public member functions about Simulation   */
 /************************************************/
 void CirMgr::randomSim() {
-    // uint32_t randomNum1 = distribution(generator);
-    // uint32_t randomNum2 = distribution(generator);
-    // cout << "Random number: " << bitset<32>(randomNum1) << endl;
-    // cout << "Random number: " << bitset<32>(randomNum2) << endl;
-
     if (inputId2Pattern.empty()) {
         inputId2Pattern = vector<int>(all.size());
         for (size_t i = 0; i < PIs.size(); ++i) {
@@ -74,8 +70,7 @@ void CirMgr::randomSim() {
         simulate64times();
         ++patternSize;
     }
-    // cout << "now GroupSize: " << SimGroups.size() << endl;
-    // cout << patternSize * 64 << " patterns simulated." << endl;
+
     isSimulated = true;
 }
 
@@ -117,7 +112,6 @@ void CirMgr::fileSim(ifstream& patternFile) {
             ++count_64;
             ++all_lineCount;
             allWriteLine = all_lineCount;
-            // cout << line << endl;
             if (count_64 == 64) {
                 count_64 = 0;
                 // if (PIs[0]->pattern == 0)
@@ -140,7 +134,6 @@ void CirMgr::fileSim(ifstream& patternFile) {
         simulate64times();
         inputPattern.clear();
         inputPattern = vector<uint64_t>(PIs.size());
-
         patternFile.close();
         cout << all_lineCount << " patterns simulated." << endl;
         isSimulated = true;
@@ -153,67 +146,26 @@ void CirMgr::fileSim(ifstream& patternFile) {
 /*   Private member functions about Simulation   */
 /*************************************************/
 
-// old
-// uint64_t CirMgr::findPattern(CirGate* g) {
-//     // if (g != 0) {
-//     //     cout << "nowGate: " << g->id << " " << g->getTypeName()
-//     // }
-//     // undefined
-//     if (g == 0) {
-//         return 0;
-//     } else if (g->type == PI_GATE) {
-//         return inputPattern[g->id - 1];
-//     } else if (g->type == CONST_GATE) {
-//         g->pattern = 0;
-//         return 0;
-//     } else if (g->type == PO_GATE) {
-//         uint64_t fanin0 = findPattern(all[g->fanin0id]);
-//         if (g->fanin0cp) fanin0 = (~fanin0);
-//         g->pattern = fanin0;
-//         return fanin0;
-//     }
-
-//     else {
-//         uint64_t fanin0 = findPattern(all[g->fanin0id]);
-//         uint64_t fanin1 = findPattern(all[g->fanin1id]);
-
-//         // different situation
-//         if (g->fanin0cp && g->fanin1cp) {
-//             g->pattern = ((~fanin0) & (~fanin1));
-//             return ((~fanin0) & (~fanin1));
-//         } else if (g->fanin0cp & !g->fanin1cp) {
-//             g->pattern = (~fanin0) & fanin1;
-//             return (~fanin0) & fanin1;
-//         } else if (!g->fanin0cp && g->fanin1cp) {
-//             g->pattern = fanin0 & (~fanin1);
-//             return fanin0 & (~fanin1);
-//         } else {
-//             g->pattern = (fanin0 & fanin1);
-//             return (fanin0 & fanin1);
-//         }
-//     }
-// }
-
 // new true == need to change
 bool CirMgr::findPattern(CirGate* g, vector<bool>& isUpdate) {
-    // if (g != 0) {
-    //     cout << "nowGate: " << g->id << " " << g->getTypeName()
-    // }
     // undefined
     if (g == 0) {
+        assert(0);
         return false;
     } else if (g->type == PI_GATE) {
         if (isNoPattern) return true;
         return (inputPattern[inputId2Pattern[g->id]] != g->pattern);
     } else if (g->type == CONST_GATE) {
         g->pattern = 0;
+        if (isNoPattern) return true;
         return false;
     } else if (g->type == PO_GATE) {
         if (findPattern(all[g->fanin0id], isUpdate)) {
+            uint64_t fanin0 = all[g->fanin0id]->type == PI_GATE ? inputPattern[inputId2Pattern[g->fanin0id]] : all[g->fanin0id]->pattern;
             if (g->fanin0cp)
-                g->pattern = ~all[g->fanin0id]->pattern;
+                g->pattern = ~fanin0;
             else
-                g->pattern = all[g->fanin0id]->pattern;
+                g->pattern = fanin0;
             return true;
         } else {
             return false;
@@ -227,12 +179,6 @@ bool CirMgr::findPattern(CirGate* g, vector<bool>& isUpdate) {
         bool isFanin0Change = findPattern(all[g->fanin0id], isUpdate);
         bool isFanin1Change = findPattern(all[g->fanin1id], isUpdate);
         if (isFanin0Change || isFanin1Change) {
-            // cout << "  " << g->id << "  here" << endl;
-            // bool flag = false;
-            // if (g->pattern == 0) {
-            //     cout << g->id << ": " << g->pattern << " vs negate: " << ~g->pattern << endl;
-            //     flag = true;
-            // }
             uint64_t fanin0 = all[g->fanin0id]->type == PI_GATE ? inputPattern[inputId2Pattern[g->fanin0id]] : all[g->fanin0id]->pattern;
             uint64_t fanin1 = all[g->fanin1id]->type == PI_GATE ? inputPattern[inputId2Pattern[g->fanin1id]] : all[g->fanin1id]->pattern;
             // different situation
@@ -245,9 +191,6 @@ bool CirMgr::findPattern(CirGate* g, vector<bool>& isUpdate) {
             } else {
                 g->pattern = (fanin0 & fanin1);
             }
-            // if (flag)
-            //     cout << g->id << ": " << g->pattern << " vs negate: " << ~g->pattern << endl;
-            // cout << " ---> fanin0: (" << g->fanin0id << ") " << fanin0 << " fanin1: (" << g->fanin1id << ") " << fanin1 << endl;
             return true;
         } else {
             return false;
@@ -255,35 +198,27 @@ bool CirMgr::findPattern(CirGate* g, vector<bool>& isUpdate) {
     }
 }
 void CirMgr::simulate64times() {
-    // cout << "START SIM..." << endl;
     vector<uint64_t> outputPattern(POs.size());
     bool result;
     vector<bool> isUpdate(all.size(), false);
 
     for (size_t i = 0; i < POs.size(); ++i) {
-        // cout << "START: " << POs[i]->id << endl;
         result = findPattern(POs[i], isUpdate);
-        // cout << "-----------------------------------------" << endl;
     }
     for (size_t i = 0; i < PIs.size(); ++i) {
         PIs[i]->pattern = inputPattern[i];
     }
     isNoPattern = false;
-    // if (_simLog != 0) {
-    //     writeLog();
-    // }
     if (SimGroups.empty()) {
         vector<pair<CirGate*, bool>> temp;
         all[0]->pattern = 0;
         temp.push_back(make_pair(all[0], false));
         for (size_t i = 0; i < POs.size(); ++i) {
             temp.push_back(make_pair(POs[i], false));
-            // temp.push_back(make_pair(AIGs[i],false));
         }
         SimGroups.push_back(temp);
     }
 
-    // cout << "start gen!" << endl;
     // gen group
     for (size_t i = 0; i < SimGroups.size(); ++i) {
         vector<pair<CirGate*, bool>> temp;
@@ -315,24 +250,7 @@ void CirMgr::simulate64times() {
             --i;
         }
     }
-
-    // old way
-    // size_t OriginGroupNum = SimGroups.size();
-    // for (int times = 0; times < 32; ++times) {
-    //     for (size_t i = 0; i < OriginGroupNum; ++i) {
-    //         GateList temp;
-    //         bool head_bitValue = (SimGroups[i][0]->pattern >> times) & 1;
-    //         for (size_t j = 1; j < SimGroups[i].size(); ++j) {
-    //             bool bitValue = (SimGroups[i][j]->pattern >> times) & 1;
-    //             if (bitValue != head_bitValue) {
-    //                 temp.push_back(SimGroups[i][j]);
-    //                 SimGroups[i].erase(SimGroups[i].begin() + j);
-    //             }
-    //         }
-    //         if (!temp.empty())
-    //             SimGroups.push_back(temp);
-    //     }
-    // }
+    // cout << "Current simgroupSize: " << SimGroups.size() << endl;
 }
 
 void CirMgr::writeLog() {
@@ -355,5 +273,128 @@ void CirMgr::writeLog() {
         }
         *_simLog << "\n";
         ++currWriteLine;
+    }
+}
+
+void CirMgr::findNecessary(CirGate* g, set<int>& set, int& patternShift) {
+    assert(g != 0);
+    if (g->type == PI_GATE) {
+        set.insert(id2Idx[g->getId()]);
+        return;
+    }
+    if (g->type == PO_GATE) {
+        findNecessary(all[g->fanin0id], set, patternShift);
+        return;
+    }
+    if (g->type == CONST_GATE) {
+        return;
+    }
+    // when g = 1 -> care both fanin
+    if (((g->pattern >> patternShift) & 1) == 1) {
+        findNecessary(all[g->fanin0id], set, patternShift);
+        findNecessary(all[g->fanin1id], set, patternShift);
+    }
+    // g = 0 -> care about zero side
+    else {
+        bool fanin0Value = ((all[g->fanin0id]->pattern >> patternShift) & 1) == 1 ? true : false;
+        if (g->fanin0cp) fanin0Value = !fanin0Value;
+        bool fanin1Value = ((all[g->fanin1id]->pattern >> patternShift) & 1) == 1 ? true : false;
+        if (g->fanin1cp) fanin1Value = !fanin1Value;
+
+        assert(!(fanin1Value && fanin0Value));
+
+        if (fanin0Value == 0) {
+            findNecessary(all[g->fanin0id], set, patternShift);
+        } else {
+            // if (fanin1Value == 0) {
+            findNecessary(all[g->fanin1id], set, patternShift);
+        }
+    }
+}
+
+vector<set<int>> CirMgr::getNecessary(const vector<int>& assign_Input, const vector<int>& assign_Output) {
+    double inputSize = assign_Input.size();
+    int outputSize = assign_Output.size();
+    assert(inputSize == PIs.size());
+    assert(outputSize == POs.size());
+
+    uint64_t zero, one;
+    zero = 0;
+    for (int i = 0; i < 64; ++i) {
+        one = one << 1;
+        one += 1;
+    }
+
+    inputPattern.clear();
+    inputPattern = vector<uint64_t>(PIs.size());
+
+    for (int i = 0; i < inputSize; ++i) {
+        if (assign_Input[i] == 0)
+            inputPattern[i] = zero;
+        else if (assign_Input[i] == 1)
+            inputPattern[i] = one;
+        else
+            assert(0);
+    }
+    // cout << "Origin Input:";
+    // for (int i = 0; i < inputSize; ++i) cout << assign_Input[i] << " ";
+    // cout << "Origin Output:";
+    // for (int i = 0; i < outputSize; ++i) cout << assign_Output[i] << " ";
+    // cout << endl;
+    simulate64times();
+    vector<set<int>> necessarys;
+    set<int> necessry;
+    int patternShift = 0;
+    for (int i = 0; i < POs.size(); ++i) {
+        necessry.clear();
+        findNecessary(POs[i], necessry, patternShift);
+        necessarys.push_back(necessry);
+    }
+    // cout << "Necessarys" << endl;
+    // for (int i = 0; i < necessarys.size(); ++i) {
+    //     cout << i << ": ";
+    //     for (set<int>::iterator it = necessarys[i].begin(); it != necessarys[i].end(); it++)
+    //         cout << *it << " ";
+    //     cout << endl;
+    return necessarys;
+}
+
+
+// random simulate and return PI/PO/NecessaryPI
+void CirMgr::randomSim2Necessary(vector<vector<int>>& assign_Input, vector<vector<int>>& assign_Output, vector<vector<set<int>>>& necessarys_64bit) {
+    random_device rd;
+    mt19937_64 generator(rd());
+    uniform_int_distribution<uint64_t> distribution(0, numeric_limits<uint64_t>::max());
+    inputPattern.clear();
+    for (size_t i = 0; i < PIs.size(); ++i) {
+        inputPattern.push_back(distribution(generator));
+    }
+    simulate64times();
+
+    vector<set<int>> necessarys;
+    set<int> necessry;
+    vector<int> pattern;
+    for (int patternShift = 0; patternShift < 64; ++patternShift) {
+        necessarys.clear();
+        for (int i = 0; i < POs.size(); ++i) {
+            necessry.clear();
+            findNecessary(POs[i], necessry, patternShift);
+            necessarys.push_back(necessry);
+        }
+        necessarys_64bit.push_back(necessarys);
+
+        // record output assign
+        pattern.clear();
+        for (int i = 0; i < POs.size(); ++i) {
+            pattern.push_back(((POs[i]->pattern >> patternShift) & 1));
+        }
+        assign_Output.push_back(pattern);
+
+        // record input assign
+        pattern.clear();
+        for (int i = 0; i < PIs.size(); ++i) {
+            pattern.push_back(((inputPattern[i] >> patternShift) & 1));
+        }
+        assign_Input.push_back(pattern);
     }
 }
