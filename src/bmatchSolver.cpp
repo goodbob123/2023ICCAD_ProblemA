@@ -423,7 +423,7 @@ void BMatchSolver::setOutMgr() {
     outMgr.setCirMgr(c1, c2);
     assert(y.size() >= x.size());
     cout << y.size() << " " << x.size() << endl;
-    outMgr.setAssumption();
+    outMgr.setAssumption(true, true, supportSpan::fSmallS, coneSpan::AbsC);
     outMgr.setInputBias(y.size() - x.size());
     if (!outMgr.init()) {
         cerr << "outMgr not correctly set" << endl;
