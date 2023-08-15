@@ -1,8 +1,7 @@
 
 #include <stdio.h>
 
-#include "./SAT/test/sat.h"
-// #include "./SAT/sat.h"
+#include "./SAT/sat.h"
 #include "bmatchSolver.h"
 extern "C" {
 #include "aiger.h"
@@ -548,7 +547,6 @@ int main(int argc, char* argv[]) {
     bmatchSolver.outputPreprocess();
     // bmatchSolver.printPossibleM(true, true);
     // bmatchSolver.possibleMethod();
-    // bmatchSolver.simulate();
     bmatchSolver.readBusInfo(bus, true);
     bmatchSolver.readBusInfo(bus, false);
     bmatchSolver.printInfo();
@@ -566,12 +564,12 @@ int main(int argc, char* argv[]) {
     }
     else {
         bmatchSolver.run();
+        // bmatchSolver.testOutputMgr();
         cout << "finish run" << endl;
     }
-    // bmatchSolver.testOutputMgr();
 
 
-    
+    bmatchSolver.finalCheck();
     remove("1.aag");
     remove("2.aag");
     remove("circuit_1.aag");

@@ -71,7 +71,7 @@ class BusInfo
         BusInfo(size_t _id, set<int>& _bus, bool _glike) {
             bus_id = _id;
             busPort = &_bus;
-            glike = _glike;
+            glike = _glike; // i.e. can connect only once
             remain_bus = _bus.size();
             connectBus = vector<BusInfo*> ();
         }
@@ -88,7 +88,7 @@ class BusInfo
         }
         bool isFull() { return (remain_bus == 0); }
         bool isMatched(BusInfo* b) {
-            if (!b->isConnect() || !isConnect()) return false;
+            // if (!b->isConnect() || !isConnect()) return false;
             for (size_t i = 0; i < connectBus.size(); ++i) {
                 if (b == connectBus[i]) return true;
             }
@@ -101,7 +101,7 @@ class BusInfo
             else return true;
         }
         void connectTo(BusInfo* b) {
-            cout << "connectBus" << endl;
+            // cout << "connectBus" << endl;
             // if (!canMatch(b) && !isMatched(b)) {
             //     cout << "badconnection" << endl;
             //     assert(false);
@@ -132,6 +132,27 @@ class BusInfo
             // cout << "suc popback" << endl;
             return bptr;
         }
+        void printBus() {
+            if (bus_id == 0) cerr << "[" <<*(busPort->begin()) << "]";
+            else cerr << bus_id;
+        }
+        void printBusInfo() {
+            printBus();
+            cerr << " : ";
+            for (set<int>::iterator itr = busPort->begin(); itr != busPort->end(); ++itr) {
+                cerr << *itr << " ";
+            }
+            cout << endl;
+        }
+        void printBusConnect() {
+            printBus();
+            cerr << " ("<< remain_bus << " , " << busPort->size() << "): ";
+            for (size_t i = 0; i < connectBus.size(); ++i) {
+                connectBus[i]->printBus();
+                cerr << " ";
+            }
+            cout << endl;
+        }
     private:
         // size_t bus_size;
         size_t bus_id;  // 0 if not a bus, just a pin
@@ -159,6 +180,7 @@ class Order
             is_assign = false;
             is_connect_bus = false;
             en = false;   // should only changed in OutPortMgr::genHeuristicOrder
+            id = 0;
             is_forbid = true;
             forbid_order = vector<Order*> ();
 
@@ -248,13 +270,13 @@ class Order
             is_pos = false;
         }
 
-        Order* backToPre() {    
+        Order* backToPre(bool just_back = false) {    
             // one step of backtrack
             // return 0 if no Pre
             Order* pre = assign_pre;
             if (pre != 0) {
                 assert(assign_pre->en);
-                pre->assign_nxt = order_nxt;
+                if (!just_back) pre->assign_nxt = order_nxt;
             }
 
             // unassign
@@ -266,17 +288,17 @@ class Order
             updateForbidOrder(0);   // clear forbid_order
             if (!is_head && is_connect_bus) {
                 BusInfo* gBus_buf = fBus_ptr->disconnectBack();
-                if (gBus_buf != gBus_ptr) cout << "wrong" << endl;
+                assert(gBus_buf == gBus_ptr);
                 BusInfo* fBus_buf = gBus_ptr->disconnectBack();
-                if (fBus_buf != fBus_ptr) cout << "wrong" << endl;
-                is_connect_bus = false;
+                assert(fBus_buf == fBus_ptr);
             }
+            is_connect_bus = false;
 
             return pre;
         }
-        Order* backTrack() {
+        Order* backTrack(bool just_back = false) {
             // backTrack to get ready for next assignment
-            Order* pre = backToPre();
+            Order* pre = backToPre(just_back);
             if (pre == 0) return 0;
             while (pre->assign_nxt == 0 || pre->assign_nxt->isForbid() || pre->assign_nxt->isAssign()) {
                 if (pre->assign_nxt == 0) pre = pre->backToPre(); // no new assignment, need further backtrack
@@ -309,7 +331,7 @@ class Order
 
         void printMapping() { 
             if (isHead()) cout << "Head" << endl;
-            else cout << fport_id << " -> " << gport_id 
+            else cout << fport_id << " <- " << gport_id 
                         << "(" << id << ")" << endl; 
         }
         void printLink() {
@@ -357,6 +379,9 @@ class Order
 };
 
 // from big to small
+enum grpChoice {
+    Support
+};
 class Comparator {  
     // cmp num Support
     // since used in OutPortMgr, Port is stored as second of pair
@@ -377,18 +402,11 @@ class Comparator {
         bool operator() (set<int>& a, set<int>& b) {
             return a.size() < b.size();
         }
-};
-class ComparatorSupport {
-    public:
-        bool operator() (pair<size_t, Port>& a, pair<size_t, Port>& b) {
-            return a.second.nofSupport() > b.second.nofSupport();
-        }
-};
-class ComparatorBinate {
-    public:
-        bool operator() (pair<size_t, Port>& a, pair<size_t, Port>& b) {
-            return false; // todo
-            // return a.second.nofSupport() > b.second.nofSupport();
+        bool operator() (const pair<pair<grpChoice, size_t>, Port>& a, const pair<pair<grpChoice, size_t>, Port>& b) {
+            assert(a.first.first == b.first.first);
+            if (a.first.first == grpChoice::Support) return a.second.nofSupport() > b.second.nofSupport();
+            cerr << "no such compare" << endl;
+            assert(0);
         }
 };
 
@@ -396,19 +414,66 @@ typedef vector<set<int>> Buses;
 class OutPortMgr
 {
     public:
-        OutPortMgr() {}
-        friend class BMatchSolver;
-        void init(vector<Port>& _f, vector<Port>& _g, Buses& _fBus, Buses& _gBus) {
+        OutPortMgr() {
+            fptr = 0;
+            gptr = 0;
+            fBusptr = 0;
+            gBusptr = 0;
+            fCirptr = 0;
+            gCirptr = 0;
+            input_bias = -1;
+            is_one_to_one = true;
+            is_bus_one_to_one = true;
+            num_constraint = 0; // ++ when constraint on grp used
+        }
+        void setPorts(vector<Port>& _f, vector<Port>& _g) {
             fptr = &_f;
             gptr = &_g;
+        }
+        void setBuses(Buses& _fBus, Buses& _gBus) {
             fBusptr = &_fBus;
             gBusptr = &_gBus;
-            is_one_to_one = (_f.size() == _g.size());
-            Buses fBusBuf = _fBus;
-            Buses gBusBuf = _gBus;
+        }
+        void setCirMgr(CirMgr* c1, CirMgr* c2) {
+            fCirptr = c1;
+            gCirptr = c2;
+        }
+        void setInputBias(int _bias) {
+            input_bias = _bias;
+        }
+        void setAssumption(bool _is_one_to_one = true, bool _is_bus_one_to_one = true) {
+            is_one_to_one = _is_one_to_one;
+            is_bus_one_to_one = _is_bus_one_to_one;
+        }
+        bool checkSetting() {
+            if (fptr == 0 || gptr == 0) {
+                cout << "setPorts First" << endl;
+                return false;
+            }
+            if (fBusptr == 0 || gBusptr == 0) {
+                cout << "setBuses First" << endl;
+                return false;
+            }
+            if (fCirptr == 0 || gCirptr == 0) {
+                cout << "setCirMgr First" << endl;
+                return false;
+            }
+            if (input_bias < 0) {
+                cout << "irregular Bias " << input_bias << endl;
+                return false;
+            }
+            return true;
+        }
+        bool init() {
+            if (!checkSetting()) return false;
+
+            is_one_to_one = is_one_to_one && (fptr->size() == gptr->size());
+
+            Buses fBusBuf = *fBusptr;
+            Buses gBusBuf = *gBusptr;
             sort(fBusBuf.begin(), fBusBuf.end(), Comparator());
             sort(gBusBuf.begin(), gBusBuf.end(), Comparator());
-            is_bus_one_to_one = fBusBuf.size() == gBusBuf.size();
+            is_bus_one_to_one = is_bus_one_to_one && (fBusBuf.size() == gBusBuf.size()) && is_one_to_one;
             if (is_bus_one_to_one) {
                 for (size_t i = 0; i < fBusBuf.size(); ++i) {
                     if (fBusBuf[i].size() != gBusBuf[i].size()) {
@@ -417,6 +482,7 @@ class OutPortMgr
                     }
                 }
             }
+
             order_map = vector<vector<Order> > ();
             fbus_map = vector<BusInfo* > ();
             gbus_map = vector<BusInfo* > ();
@@ -429,6 +495,7 @@ class OutPortMgr
             // cout << "Mgr1" << endl;
             genHeuristicOrder();    // i.e. gen possible order chain
             cout << "done outPortMgr init" << endl;
+            return true;
         }
         Order* step() {
             if (assign_current->isHead()) cout << "at head" << endl; 
@@ -446,11 +513,11 @@ class OutPortMgr
             }
             return assign_current;
         }
-        Order* backTrack() {
+        Order* backTrack(bool just_back = false) {
             // backtrack
             if (assign_current->isHead()) cout << "at head" << endl;
             is_backtrack = true;
-            assign_current = assign_current->backTrack();
+            assign_current = assign_current->backTrack(just_back);
             return assign_current;
         }
         Order* getHead() { return assign_head; }
@@ -481,6 +548,22 @@ class OutPortMgr
                 cout << endl;
             }
         }
+        void printBusInfo() {
+            for (size_t i = 0; i < fbus_map.size(); ++i) {
+                fbus_map[i]->printBusInfo();
+            }
+            for (size_t i = 0; i < gbus_map.size(); ++i) {
+                gbus_map[i]->printBusInfo();
+            }
+        }
+        void printBusConnection() {
+            for (size_t i = 0; i < fbus_map.size(); ++i) {
+                fbus_map[i]->printBusConnect();
+            }
+            for (size_t i = 0; i < gbus_map.size(); ++i) {
+                gbus_map[i]->printBusConnect();
+            }
+        }
 
     private:
         bool is_one_to_one; // do we assume output is one to one
@@ -489,6 +572,9 @@ class OutPortMgr
         vector<Port>* gptr; // copy of g
         Buses* fBusptr;
         Buses* gBusptr;
+        CirMgr* fCirptr;
+        CirMgr* gCirptr;
+        int input_bias;
 
         // vector<BusInfo> fBus;
         // vector<BusInfo> gBus;
@@ -499,16 +585,13 @@ class OutPortMgr
         Order* assign_head; // pseudo head of chain of possible assignment
         Order* assign_current;  // current end of assignment
         bool is_backtrack;  // whether previous step is backtracking
+        size_t num_constraint;
         // init
         void genMaps() {
             // todo
 
             vector<BusInfo*> f_businfo(fptr->size(), 0);
             vector<BusInfo*> g_businfo(gptr->size(), 0);
-            // fbus_map.push_back(set<BusInfo*> ());
-            // fbus_map.push_back(set<BusInfo*> ());
-            // gbus_map.push_back(set<BusInfo*> ());
-            // gbus_map.push_back(set<BusInfo*> ());
 
             for (size_t i = 0; i < fBusptr->size(); ++i) {
                 set<int>& bus = fBusptr->at(i);
@@ -589,47 +672,42 @@ class OutPortMgr
         // init
         void genHeuristicOrder() {
 
-            vector<pair<size_t, Port> > f_sort;
-            vector<pair<size_t, Port> > g_sort;
+            vector<pair<size_t, Port> > f_port;
+            vector<pair<size_t, Port> > g_port;
             for (size_t i = 0; i < fptr->size(); ++i) {
-                f_sort.push_back(pair<size_t, Port> (i, fptr->at(i)));
+                f_port.push_back(pair<size_t, Port> (i, fptr->at(i)));
             }
             for (size_t i = 0; i < gptr->size(); ++i) {
-                g_sort.push_back(pair<size_t, Port> (i, gptr->at(i)));
+                g_port.push_back(pair<size_t, Port> (i, gptr->at(i)));
             }
-            
-
-            // for (auto f: f_sort) {
-            //     cout << f.first << "--";
-            //     cout << f.second.nofSupport() << endl;
-            // }
-            // for (auto g: g_sort) {
-            //     cout << g.first << "--";
-            //     cout << g.second.nofSupport() << endl;
-            // }
-            // cout << "gen4" << endl;
 
             vector<Order*> order_sort; // group of valid assignment
             Order* order_buf;
-
             if (is_one_to_one) {
-                grouping();
+                grouping(grpChoice::Support);
             }
-
             // cout << "gen 0" <<endl;
-            for (size_t i_g = 0; i_g < g_sort.size(); ++i_g) {
-                for (size_t i_f = 0; i_f < f_sort.size(); ++i_f) {
-                    pair<size_t, Port> fp = f_sort[i_f];
-                    pair<size_t, Port> gp = g_sort[i_g];
+            for (size_t i_g = 0; i_g < g_port.size(); ++i_g) {
+                for (size_t i_f = 0; i_f < f_port.size(); ++i_f) {
+                    pair<size_t, Port> fp = f_port[i_f];
+                    pair<size_t, Port> gp = g_port[i_g];
                     order_buf = checkMapping(fp, gp);
                     if (order_buf) order_sort.push_back(order_buf);
                 }
             }
 
             // cout << "gen1" << endl;
-
             // make the order chain
             sort(order_sort.begin(), order_sort.end(), Comparator());
+            // for (auto f: f_port) {
+            //     cout << f.first << "--";
+            //     cout << f.second.nofSupport() << endl;
+            // }
+            // for (auto g: g_port) {
+            //     cout << g.first << "--";
+            //     cout << g.second.nofSupport() << endl;
+            // }
+            // cout << "gen4" << endl;
             for (auto ord: order_sort) {
                 ord->printMapping();
             }
@@ -646,31 +724,37 @@ class OutPortMgr
             nxt->enable(0); // nxt of tail make it 0
         }
         // init-genHeuristicOrder
-        void grouping() {
-            vector<pair<size_t, Port> > f_sort;
-            vector<pair<size_t, Port> > g_sort;
+        void grouping(grpChoice choice) {
+            ++num_constraint;
+            vector<pair< pair<grpChoice, size_t>, Port> > f_sort;
+            vector<pair< pair<grpChoice, size_t>, Port> > g_sort;
             for (size_t i = 0; i < fptr->size(); ++i) {
-                f_sort.push_back(pair<size_t, Port> (i, fptr->at(i)));
+                f_sort.push_back(pair<pair<grpChoice, size_t>, Port> (pair<grpChoice, size_t> (choice, i), fptr->at(i)));
             }
             for (size_t i = 0; i < gptr->size(); ++i) {
-                g_sort.push_back(pair<size_t, Port> (i, gptr->at(i)));
+                g_sort.push_back(pair<pair<grpChoice, size_t>, Port> (pair<grpChoice, size_t> (choice, i), gptr->at(i)));
             }
+            // for (auto f: f_sort) {
+            //     cout << f.first.second << endl;
+            // }
+            // assert(0);
+            sort(f_sort.begin(), f_sort.end(), Comparator());
+            sort(g_sort.begin(), g_sort.end(), Comparator());
 
-
-            sort(f_sort.begin(), f_sort.end(), ComparatorSupport());
-            sort(g_sort.begin(), g_sort.end(), ComparatorSupport());
             for (size_t i = 0; i < f_sort.size(); ++i) {
+                assert(!Comparator() (f_sort[i], g_sort[i]));
                 assert(f_sort[i].second.nofSupport() <= g_sort[i].second.nofSupport()); // if fail, means not one to one
             }
 
             size_t cut = 0; // cut is the end of previous group
             for (size_t i = 1; i < f_sort.size(); ++i) {
-                if (f_sort[i - 1].second.nofSupport() > g_sort[i].second.nofSupport()) {
+                if (Comparator() (f_sort[i - 1], g_sort[i])) { //f_sort[i - 1].second.nofSupport() > g_sort[i].second.nofSupport()) {
+
                     // group found, between [cut, i)
                     for (size_t i_g = cut; i_g < i; ++i_g) {
                         for (size_t i_f = cut; i_f < i; ++i_f) {
-                            size_t fid = f_sort[i_f].first;
-                            size_t gid = g_sort[i_g].first;
+                            size_t fid = f_sort[i_f].first.second;
+                            size_t gid = g_sort[i_g].first.second;
                             order_map[gid][fid].sameGrp();
                         }
                     }
@@ -680,8 +764,8 @@ class OutPortMgr
             // final group should added
             for (size_t i_g = cut; i_g < g_sort.size(); ++i_g) {
                 for (size_t i_f = cut; i_f < f_sort.size(); ++i_f) {
-                    size_t fid = f_sort[i_f].first;
-                    size_t gid = g_sort[i_g].first;
+                    size_t fid = f_sort[i_f].first.second;
+                    size_t gid = g_sort[i_g].first.second;
                     order_map[gid][fid].sameGrp();
                 }
             }
@@ -689,13 +773,13 @@ class OutPortMgr
         // init-genHeuristicOrder
         Order* checkMapping(pair<size_t, Port>& fp, pair<size_t, Port>& gp) {
             // Order* buf_order_ptr = &order_map[fp.first][gp.first];
+            if (gp.first >= order_map.size() || fp.first >= order_map[0].size()) cerr << "no such order exist : " << fp.first << " <- " << gp.first << endl;
             Order* buf_order_ptr = &order_map[gp.first][fp.first];
-            size_t numConstraint = 1;
 
             // checking the mapping is valid
             if (gp.second.nofSupport() < fp.second.nofSupport()) return 0;    // support should be bigger
             if (is_bus_one_to_one && buf_order_ptr->getFBusptr()->getBusSize() != buf_order_ptr->getGBusptr()->getBusSize()) return 0; // bus should be same
-            if (!buf_order_ptr->isSameGrp(numConstraint)) return 0;
+            if (!buf_order_ptr->isSameGrp(num_constraint)) return 0;
             return buf_order_ptr;
         }
         // step
@@ -733,26 +817,32 @@ class OutPortMgr
                 for (size_t i = 0; i < gbus_map.size(); ++i) {
                     if (is_bus_one_to_one) {
                         if (fbus_ptr->getBusSize() != gbus_map[i]->getBusSize()) continue;  // forbid by one to one already
-                        if (gbus_map[i] == gbus_ptr) continue;
                         assert(!fbus_ptr->canMatch(gbus_ptr));
+                        if (gbus_map[i] == gbus_ptr) continue;
                         forbidByBus(fbus_ptr, gbus_map[i]);
                     }
                     else {
-                        cout << "not done yet" << endl;
-                        assert(false);
+                        if (fbus_ptr->canMatch(gbus_map[i])) continue;
+                        if (gbus_map[i] == gbus_ptr) continue;
+                        forbidByBus(fbus_ptr, gbus_map[i]);
+                        // cout << "not done yet" << endl;
+                        // assert(false);
                         // todo
                     }
                 }
                 for (size_t i = 0; i < fbus_map.size(); ++i) {
                     if (is_bus_one_to_one) {
                         if (gbus_ptr->getBusSize() != fbus_map[i]->getBusSize()) continue;  // forbid by one to one already
-                        if (fbus_map[i] == fbus_ptr) continue;
                         assert(!gbus_ptr->canMatch(fbus_ptr));
+                        if (fbus_map[i] == fbus_ptr) continue;
                         forbidByBus(fbus_map[i], gbus_ptr);
                     }
                     else {
-                        cout << "not done yet" << endl;
-                        assert(false);
+                        if (fbus_map[i]->canMatch(gbus_ptr)) continue;
+                        if (fbus_map[i] == fbus_ptr) continue;
+                        forbidByBus(fbus_map[i], gbus_ptr);
+                        // cout << "not done yet" << endl;
+                        // assert(false);
                         // todo
                     }
                 }
@@ -764,7 +854,7 @@ class OutPortMgr
             set<int> gbusport = gbus->getBusPort();
             for (set<int>::iterator fitr = fbusport.begin(); fitr != fbusport.end(); ++fitr) {
                 for (set<int>::iterator gitr = gbusport.begin(); gitr != gbusport.end(); ++gitr) {
-                    cout << "forbid " << *fitr << " " << *gitr<< endl;
+                    // cout << "forbid " << *fitr << " " << *gitr<< endl;
                     assign_current->updateForbidOrder(&order_map[*gitr][*fitr]);
                 }
             }
@@ -796,6 +886,7 @@ class BMatchSolver {
     void interactiveSolve();
     void printPossibleM(bool mi, bool mo);
     void possibleMethod();
+    bool finalCheck();
 
    protected:
     void genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aag2);
@@ -813,7 +904,7 @@ class BMatchSolver {
 
     void initCircuit(ifstream& in1, ifstream& in2);
     void getEqualGroup(vector<vector<pair<int, bool>>>& group_f,vector<vector<pair<int, bool>>>& group_g);
-    // useless
+    void setOutMgr();
     void addEqualConstraint();
     void createEqualRelationByGroup(const vector<pair<CirGate*, bool>>& group_f,
                                     const vector<pair<CirGate*, bool>>& group_g);
@@ -825,7 +916,6 @@ class BMatchSolver {
     void assumeMo();
     void connectBus(Var connectVar, const set<int>& bus1, const set<int>& bus2);
     void assumeInputRedundnatFromOutput(const set<int>& input1, const set<int>& input2);
-    bool finalCheckAns();
 
     bool checkPossibleMi();
     bool checkPossibleMo();
