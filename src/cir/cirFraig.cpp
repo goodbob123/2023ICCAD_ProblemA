@@ -6,14 +6,16 @@
   Copyright    [ Copyleft(c) 2012-present LaDs(III), GIEE, NTU, Taiwan ]
 ****************************************************************************/
 
+#include <algorithm>
 #include <cassert>
 #include <istream>
 #include <map>
+#include <set>
 #include <sstream>
 #include <vector>
 
-// #include "../SAT/test/sat.h"
-#include "../SAT/sat.h"
+#include "../SAT/test/sat.h"
+// #include "../SAT/sat.h"
 #include "cirGate.h"
 #include "cirMgr.h"
 
@@ -303,23 +305,17 @@ vector<vector<pair<CirGate*, bool>>> CirMgr::fraigForGroup() {
     vector<vector<pair<CirGate*, bool>>> equalGroups;
     // construct circuit info
     genProofModel(solver);
-    vector<int> later;
     // find FEC
     int numPattern = 0;
     inputPattern.clear();
     inputPattern = vector<uint64_t>(PIs.size());
-    int sizeNum = 0;
-    int prevSize = 0;
     vector<pair<CirGate*, bool>> equalGroup;
+    vector<pair<CirGate*, bool>> newGroup;
     while (SimGroups.size() != 0) {
         for (int i = 0; i < SimGroups.size(); ++i) {
             if (SimGroups[i].size() <= 1) {
                 SimGroups.erase(SimGroups.begin() + i);
                 --i;
-                if (!equalGroup.empty()) {
-                    equalGroups.push_back(equalGroup);
-                    equalGroup.clear();
-                }
                 continue;
             }
             for (size_t j = 1; j < SimGroups[i].size(); ++j) {
@@ -329,85 +325,34 @@ vector<vector<pair<CirGate*, bool>>> CirMgr::fraigForGroup() {
                     if (equalGroup.empty())
                         equalGroup.push_back(SimGroups[i][0]);
                     equalGroup.push_back(SimGroups[i][j]);
-
-                    CirGate* need = SimGroups[i][0].first;
-                    CirGate* curr = SimGroups[i][j].first;
-                    if ((need->fanin0id == curr->id) && need->id != 0) {
-                        CirGate* temp = need;
-                        need = curr;
-                        curr = temp;
-                    }
-                    // delete curr
                     SimGroups[i].erase(SimGroups[i].begin() + j);
                     --j;
                 }
                 // not equal -> inputpattern ++
                 else {
+                    newGroup.push_back(SimGroups[i][j]);
+                    SimGroups[i].erase(SimGroups[i].begin() + j);
+                    --j;
                     ++numPattern;
                     if (numPattern == 64) {
                         simulate64times();
                         inputPattern.clear();
                         inputPattern = vector<uint64_t>(PIs.size());
-                        // cout << "Updating by UNSAT... " << endl;
-                        // cout << "Total #FEC Group = " << SimGroups.size() << endl;
                         numPattern = 0;
                         // restart again
                         i = 0;
-                        // update AIG
-                        updateAIGs();
-
-                        // updateFanout
-                        updateFanout();
-
-                        if (SimGroups.size() == prevSize) {
-                            ++sizeNum;
-                        } else {
-                            sizeNum = 0;
-                        }
-                        if (sizeNum == 10) {
-                            for (int i = 0; i < SimGroups.size(); ++i) {
-                                SimGroups[i].erase(SimGroups[i].begin());
-                            }
-                            // cout << "stuck!!" << endl;
-                        }
-                        if (sizeNum == 20) {
-                            SimGroups.clear();
-                            // cout << "force to stop ! " << endl;
-                            break;
-                        }
-                        prevSize = SimGroups.size();
-                        // break;
                     }
-                }
-                if (SimGroups[i].size() <= 1) {
-                    SimGroups.erase(SimGroups.begin() + i);
-                    // cout << "\rTotal #FEC Group = " << SimGroups.size();
-                    if (!equalGroup.empty()) {
-                        equalGroups.push_back(equalGroup);
-                        equalGroup.clear();
-                    }
-                    continue;
                 }
             }
 
-            if (sizeNum == 20) {
-                // SimGroups.clear();
-                // cout << "force to stop ! " << endl;
-                if (!equalGroup.empty()) {
-                    equalGroups.push_back(equalGroup);
-                    equalGroup.clear();
-                }
-                break;
-            }
             if (!equalGroup.empty()) {
                 equalGroups.push_back(equalGroup);
                 equalGroup.clear();
             }
-        }
-        if (sizeNum == 20) {
-            // SimGroups.clear();
-            // cout << "force to stop ! " << endl;
-            break;
+            if (!newGroup.empty()) {
+                SimGroups.push_back(newGroup);
+                newGroup.clear();
+            }
         }
     }
     // cout << "END..." << endl;
@@ -420,5 +365,31 @@ vector<vector<pair<CirGate*, bool>>> CirMgr::fraigForGroup() {
 
     isSimulated = false;
 
-    return equalGroups;
+    // remove CONST gate
+    if (!equalGroups.empty())
+        if (equalGroups[0][0].first->getTypeName() == "CONST") equalGroups[0].erase(equalGroups[0].begin());
+
+    // remove the same group
+    set<int> tmp;
+    vector<set<int>> groupBySet;
+    for (size_t i = 0; i < equalGroups.size(); ++i) {
+        for (size_t j = 0; j < equalGroups[i].size(); ++j) {
+            tmp.insert(equalGroups[i][j].first->getId());
+        }
+        groupBySet.push_back(tmp);
+        tmp.clear();
+    }
+    vector<vector<pair<CirGate*, bool>>> new_equalGroups;
+    bool uniqueFlag = true;
+    for (size_t i = 0; i < equalGroups.size(); ++i) {
+        for (size_t j = 0; j < equalGroups.size(); ++j) {
+            if (i == j) continue;
+            if(groupBySet[i]==groupBySet[j]) uniqueFlag=false;
+            if (std::includes(groupBySet[j].begin(), groupBySet[j].end(), groupBySet[i].begin(), groupBySet[i].end())) uniqueFlag = false;
+        }
+        if (uniqueFlag) new_equalGroups.push_back(equalGroups[i]);
+        uniqueFlag = true;
+    }
+
+    return new_equalGroups;
 }

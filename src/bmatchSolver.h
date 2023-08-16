@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
-#include <set>
 #include <unordered_map>
 
 #include "./SAT/test/sat.h"
@@ -415,7 +414,7 @@ class Comparator {
                 } else return a->cone_atri < b->cone_atri;
             } else return a->support_atri < b->support_atri;
         }
-        bool operator() (const set<int>& a, const set<int>& b) {
+        bool operator() (set<int>& a, set<int>& b) {
             return a.size() < b.size();
         }
         bool operator() (const pair<pair<grpChoice, size_t>, Port>& a, const pair<pair<grpChoice, size_t>, Port>& b) {
@@ -964,10 +963,11 @@ class BMatchSolver {
     void printSupport(const vector<Port>& portTarget, const vector<Port>& portInv) const;
     void busConstraint();
     void testOutputMgr();
+    void simulate();
     void interactiveSolve();
     void printPossibleM(bool mi, bool mo);
     void possibleMethod();
-    bool finalcheck();
+    bool finalCheck();
 
    protected:
     void genCircuitModel(ifstream& portMapping, ifstream& aag1, ifstream& aag2);
@@ -984,6 +984,7 @@ class BMatchSolver {
     void scoreGte(int x);
 
     void initCircuit(ifstream& in1, ifstream& in2);
+    void getEqualGroup(vector<vector<pair<int, bool>>>& group_f,vector<vector<pair<int, bool>>>& group_g);
     void setOutMgr();
     void addEqualConstraint();
     void createEqualRelationByGroup(const vector<pair<CirGate*, bool>>& group_f,

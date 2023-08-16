@@ -8,9 +8,9 @@
 
 #ifndef CIR_MGR_H
 #define CIR_MGR_H
-
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -82,6 +82,9 @@ class CirMgr {
     // void coverage(CirGate *g);
     void coverageHelper(CirGate* g, int& coverage, vector<int>& supports);
     void getSupportCoverageInfo(vector<int> &allCoverage, vector<vector<int>> &allSupports);
+    void findNecessary(CirGate *g, set<int> &set, int& patternShift);
+    vector<set<int>> getNecessary(const vector<int> &, const vector<int> &);
+    void randomSim2Necessary(vector<vector<int>>& , vector<vector<int>>& , vector<vector<set<int>>>& );
     void showInfo();
 
     // update Function
@@ -119,7 +122,7 @@ class CirMgr {
 
     // for CAD tmp data
     vector<int> all_coverage;
-    unordered_map<int, int> id2Idx;
+    unordered_map<int, int> id2Idx;  // for input
 };
 
 #endif  // CIR_MGR_H

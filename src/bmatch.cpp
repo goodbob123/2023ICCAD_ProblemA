@@ -1,7 +1,6 @@
 
 #include <stdio.h>
 
-// #include "./SAT/test/sat.h"
 #include "./SAT/sat.h"
 #include "bmatchSolver.h"
 extern "C" {
@@ -557,7 +556,6 @@ int main(int argc, char* argv[]) {
     //cin >> temp;
     //if (temp == 1)
         //bmatchSolver.busConstraint();
-    
     cerr << "Enter 1 for interactive mode: ";
     int interactive;
     cin >> interactive;
@@ -571,7 +569,7 @@ int main(int argc, char* argv[]) {
     }
 
 
-    bmatchSolver.finalcheck();
+    bmatchSolver.finalCheck();
     remove("1.aag");
     remove("2.aag");
     remove("circuit_1.aag");
