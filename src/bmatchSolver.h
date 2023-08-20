@@ -213,6 +213,7 @@ class Order
         Port* getFptr() const { return fport_ptr; }
         Port* getGptr() const { return gport_ptr; }
         Order* getAssignNxt() const { return assign_nxt; }
+        Order* getOrderNxt() const {return order_nxt; }
         bool isAssign() const { return is_assign; }
         bool isConnectBus() const { return is_connect_bus; }
         BusInfo* getFBusptr() const { return fBus_ptr; }
@@ -245,7 +246,10 @@ class Order
                 }
                 forbid_order.clear();
             } else {
-                if (!_forbid_order->is_forbid) {
+                if (_forbid_order->is_assign) {
+                    cerr << "forbid on assigned one, conflict" << endl;
+                    assert(0);
+                } else if (!_forbid_order->is_forbid) {
                     _forbid_order->is_forbid = true;
                     forbid_order.push_back(_forbid_order);
                 }
@@ -431,18 +435,17 @@ class OutPortMgr
 {
     public:
         OutPortMgr() {
-            fptr = 0;
-            gptr = 0;
-            fBusptr = 0;
-            gBusptr = 0;
-            fCirptr = 0;
-            gCirptr = 0;
-            input_bias = -1;
             is_one_to_one = true;
             is_bus_one_to_one = true;
             support_span_type = supportSpan::fBigS;
             cone_span_type = coneSpan::AbsC;
-            num_constraint = 0; // ++ when constraint on grp used
+            fptr = 0;
+            gptr = 0;
+            fBusptr = 0;
+            gBusptr = 0;
+            eqgrp_f = vector<vector<pair<int, bool> > > ();
+            eqgrp_g = vector<vector<pair<int, bool> > > ();
+            input_bias = -1;
         }
         void setPorts(vector<Port>& _f, vector<Port>& _g) {
             fptr = &_f;
@@ -452,9 +455,9 @@ class OutPortMgr
             fBusptr = &_fBus;
             gBusptr = &_gBus;
         }
-        void setCirMgr(CirMgr* c1, CirMgr* c2) {
-            fCirptr = c1;
-            gCirptr = c2;
+        void setEqInfo(vector<vector<pair<int, bool> > >& group_f, vector<vector<pair<int, bool>>>& group_g) {
+            eqgrp_f = group_f;
+            eqgrp_g = group_g;
         }
         void setInputBias(int _bias) {
             input_bias = _bias;
@@ -474,10 +477,10 @@ class OutPortMgr
                 cout << "setBuses First" << endl;
                 return false;
             }
-            if (fCirptr == 0 || gCirptr == 0) {
-                cout << "setCirMgr First" << endl;
-                return false;
-            }
+            // if (eqgrp_f.empty() || eqgrp_g.empty()) {
+            //     cout << "need eq information" << endl;
+            //     return false;
+            // }
             if (input_bias < 0) {
                 cout << "irregular Bias " << input_bias << endl;
                 return false;
@@ -506,6 +509,10 @@ class OutPortMgr
             order_map = vector<vector<Order> > ();
             fbus_map = vector<BusInfo* > ();
             gbus_map = vector<BusInfo* > ();
+            feq_map = vector<int > (fptr->size(), -1);
+            geq_map = vector<int > (gptr->size(), -1);
+            
+            num_constraint = 0; // ++ when constraint on grp used
             assign_head = new Order();
             assign_current = assign_head;
             is_backtrack = false;
@@ -513,7 +520,7 @@ class OutPortMgr
             // cout << "Mgr2" << endl;
             genMaps();
             // cout << "Mgr1" << endl;
-            genAtri();
+            genSpanAtri();
             genHeuristicOrder();    // i.e. gen possible order chain
             cout << "done outPortMgr init" << endl;
             return true;
@@ -555,7 +562,7 @@ class OutPortMgr
             }
             return assignment;
         }
-        void printAssign() {
+        void printAssign(int fid = -1, int gid = -1) {
             cout << "current assign: ";
             assign_current->printMapping();
             for (size_t i = 0; i < order_map.size(); ++i) {
@@ -585,6 +592,30 @@ class OutPortMgr
                 gbus_map[i]->printBusConnect();
             }
         }
+        // ans.size() == f size, let ans[gid] = -1 if no assignment need
+        bool checkWithCorrectAns(vector<int>& ans) {
+            Order* viewer = assign_head;
+            while (viewer->getOrderNxt() != 0) {
+                viewer = viewer->getOrderNxt();
+                if (viewer->isForbid()) continue;
+                int v_fid = viewer->getFid();
+                int v_gid = viewer->getGid();
+                if (ans[v_gid] == v_fid) ans[v_gid] = -1;
+            }
+            for (size_t gid = 0; gid < ans.size(); ++gid) {
+                if (ans[gid] != -1) {
+                    cout << "fautly forbid " << ans[gid] << "<-" << gid << endl;
+                    // for (size_t map_gid = 0; map_gid < order_map.size(); ++map_gid) {
+                    //     for (size_t map_fid = 0; map_fid < order_map[0].size(); ++map_fid) {
+                    //         // todo
+                    //          vector<
+                    //     }
+                    // }
+                    return false;
+                }
+            }
+            return true;
+        }
 
     private:
         bool is_one_to_one; // do we assume output is one to one
@@ -595,20 +626,20 @@ class OutPortMgr
         vector<Port>* gptr; // copy of g
         Buses* fBusptr;
         Buses* gBusptr;
-        CirMgr* fCirptr;
-        CirMgr* gCirptr;
+        vector<vector<pair<int, bool> > > eqgrp_f;
+        vector<vector<pair<int, bool> > > eqgrp_g;
         int input_bias;
-
-        // vector<BusInfo> fBus;
-        // vector<BusInfo> gBus;
 
         vector<vector<Order> > order_map; // matrix of Order, same as format of c, d in bmatch
         vector<BusInfo* > fbus_map;
         vector<BusInfo* > gbus_map;
+        vector<int > feq_map;
+        vector<int > geq_map;
+
+        size_t num_constraint;
         Order* assign_head; // pseudo head of chain of possible assignment
         Order* assign_current;  // current end of assignment
         bool is_backtrack;  // whether previous step is backtracking
-        size_t num_constraint;
         // init
         void genMaps() {
             // todo
@@ -672,6 +703,54 @@ class OutPortMgr
             //     cout << endl;
             // }
 
+            // feq, geq had init in init()
+            // similar to businfo
+            for (int i = 0; i < eqgrp_f.size(); ++i) {
+                vector<pair<int, bool> >& eqPorts = eqgrp_f[i];
+                if (eqPorts.size() < 2) {
+                    cerr << "weird grp!" << endl;
+                    continue;
+                }
+                int pre, nxt;
+                for (int j = 1; j < eqPorts.size(); ++j) {
+                    pre = eqPorts[j - 1].first;
+                    nxt = eqPorts[j].first;
+                    feq_map[pre] = nxt;
+                }
+                feq_map[nxt] = eqPorts[0].first;
+            }
+            for (int i = 0; i < feq_map.size(); ++i) {
+                if (feq_map[i] < 0) feq_map[i] = i;
+            }
+
+            // for (int i = 0; i < feq_map.size(); ++i) {
+            //     cout << i << " : " << feq_map[i] << endl;
+            // }
+
+            for (int i = 0; i < eqgrp_g.size(); ++i) {
+                vector<pair<int, bool> >& eqPorts = eqgrp_g[i];
+                if (eqPorts.size() < 2) {
+                    cerr << "weird grp!" << endl;
+                    continue;
+                }
+                int pre, nxt;
+                for (int j = 1; j < eqPorts.size(); ++j) {
+                    pre = eqPorts[j - 1].first;
+                    nxt = eqPorts[j].first;
+                    geq_map[pre] = nxt;
+                }
+                geq_map[nxt] = eqPorts[0].first;
+            }
+            for (int i = 0; i < geq_map.size(); ++i) {
+                if (geq_map[i] < 0) geq_map[i] = i;
+            }
+
+            // for (int i = 0; i < geq_map.size(); ++i) {
+            //     cout << i << " : " << geq_map[i] << endl;
+            // }
+            
+
+            // ord map
             for (size_t i = 0; i < gptr->size(); ++i) {
                 vector<Order> buffer;
                 for (size_t j = 0; j < fptr->size(); ++j) {
@@ -680,6 +759,7 @@ class OutPortMgr
                 }
                 order_map.push_back(buffer);
             }
+
             // for (auto s: fbus_map) {
             //     for (auto busptr: s) {
             //         cout << busptr << " ";
@@ -693,7 +773,7 @@ class OutPortMgr
             // }
         }
         // init
-        void genAtri() {
+        void genSpanAtri() {
             vector<pair< pair<grpChoice, size_t>, Port> > f_sort;
             vector<pair< pair<grpChoice, size_t>, Port> > g_sort;
             for (size_t i = 0; i < fptr->size(); ++i) {
@@ -780,18 +860,11 @@ class OutPortMgr
             // cout << "gen1" << endl;
             // make the order chain
             sort(order_sort.begin(), order_sort.end(), Comparator());
-            // for (auto f: f_port) {
-            //     cout << f.first << "--";
-            //     cout << f.second.nofSupport() << endl;
-            // }
-            // for (auto g: g_port) {
-            //     cout << g.first << "--";
-            //     cout << g.second.nofSupport() << endl;
-            // }
+            
             // cout << "gen4" << endl;
-            for (auto ord: order_sort) {
-                ord->printMapping();
-            }
+            // for (auto ord: order_sort) {
+            //     ord->printMapping();
+            // }
             Order* pre = 0;
             Order* nxt = assign_head;
             for (size_t i = 0; i < order_sort.size(); ++i) {
@@ -803,6 +876,33 @@ class OutPortMgr
             }
             assign_head->assign(0); // pre of head make it 0
             nxt->enable(0); // nxt of tail make it 0
+
+            // eq1
+            // for (size_t eqgrp_id = 0; eqgrp_id < eqgrp_g.size(); ++eqgrp_id) {
+            //     // cout << "get in" << endl;
+            //     vector<pair<int, bool> > eqgrp = eqgrp_g[eqgrp_id];
+            //     for (size_t fid = 0; fid < fptr->size(); ++fid) {
+            //         int reason_gid = -1;
+            //         for (size_t gid_id = 0; gid_id < eqgrp.size(); ++gid_id) {
+            //             int gid = eqgrp[gid_id].first;
+            //             if (order_map[gid][fid].isForbid()) {
+            //                 reason_gid = gid;
+            //                 break;
+            //             }
+            //         }
+            //         if (reason_gid != -1) {
+            //             for (size_t gid_id = 0; gid_id < eqgrp.size(); ++gid_id) {
+            //                 int gid = eqgrp[gid_id].first;
+            //                 Order* forbid_ord = &(order_map[gid][fid]);
+            //                 if (!forbid_ord->isForbid()) cout << fid << "<-" << gid << " is forbid forever" << endl;
+            //                 order_map[reason_gid][fid].updateForbidOrder(forbid_ord);
+            //             }
+            //         }
+            //     }
+            // }
+
+            // printAssign();
+            // assert(0);
         }
         // init-genHeuristicOrder
         void grouping(grpChoice choice) {
@@ -853,7 +953,6 @@ class OutPortMgr
         }
         // init-genHeuristicOrder
         Order* checkMapping(pair<size_t, Port>& fp, pair<size_t, Port>& gp) {
-            // Order* buf_order_ptr = &order_map[fp.first][gp.first];
             if (gp.first >= order_map.size() || fp.first >= order_map[0].size()) cerr << "no such order exist : " << fp.first << " <- " << gp.first << endl;
             Order* buf_order_ptr = &order_map[gp.first][fp.first];
 
@@ -861,9 +960,44 @@ class OutPortMgr
             if (gp.second.nofSupport() < fp.second.nofSupport()) return 0;    // support should be bigger
             if (is_bus_one_to_one && buf_order_ptr->getFBusptr()->getBusSize() != buf_order_ptr->getGBusptr()->getBusSize()) return 0; // bus should be same
             if (!buf_order_ptr->isSameGrp(num_constraint)) return 0;
+
+            // eq2
+            // size_t feq_cnt = 1;
+            // int f_view = feq_map[fp.first];
+            // while (f_view != fp.first) {
+            //     ++feq_cnt;
+            //     f_view = feq_map[f_view];
+            // }
+            // size_t geq_cnt = 1;
+            // int g_view = geq_map[gp.first];
+            // while (g_view != gp.first) {
+            //     ++geq_cnt;
+            //     g_view = geq_map[g_view];
+            // }
+            // if (is_one_to_one && geq_cnt > feq_cnt) {
+            //     cout << fp.first << "<-" << gp.first << "fail" << endl;
+            //     cout << feq_cnt << " " << geq_cnt << endl;
+            //     return 0;
+            // }
+
             return buf_order_ptr;
         }
         // step
+        void forbidOrder(size_t gid, size_t fid) {
+            int now_gid = gid;
+            int now_fid = fid;
+            assign_current->updateForbidOrder(&(order_map[now_gid][now_fid]));
+            
+            // eq3
+            // now_gid = geq_map[gid];
+            // while(now_gid != gid) {
+            //     assert(now_gid >= 0);
+            //     assert(now_fid >= 0);
+            //     assign_current->updateForbidOrder(&(order_map[now_gid][now_fid]));
+            //     now_gid = geq_map[now_gid];
+            // }
+            
+        }
         void noRemapRule() {
             // cout << assign_current << endl;
             // assign_current->printMapping();
@@ -875,7 +1009,7 @@ class OutPortMgr
                 if (i == fid) continue;
                 else {
                     assert(&(order_map[gid][i]) != 0);
-                    assign_current->updateForbidOrder(&(order_map[gid][i]));
+                    forbidOrder(gid, i);
                     // order_map[gid][i].updateForbidReason(assign_current);
                 }
             }
@@ -885,7 +1019,7 @@ class OutPortMgr
                     if (i == gid) continue;
                     else {
                         assert(&(order_map[i][fid]) != 0);
-                        assign_current->updateForbidOrder(&(order_map[i][fid]));
+                        forbidOrder(i, fid);
                         // order_map[i][fid].updateForbidReason(assign_current);
                     }
                 }
@@ -936,7 +1070,7 @@ class OutPortMgr
             for (set<int>::iterator fitr = fbusport.begin(); fitr != fbusport.end(); ++fitr) {
                 for (set<int>::iterator gitr = gbusport.begin(); gitr != gbusport.end(); ++gitr) {
                     // cout << "forbid " << *fitr << " " << *gitr<< endl;
-                    assign_current->updateForbidOrder(&order_map[*gitr][*fitr]);
+                    forbidOrder(*gitr, *fitr);
                 }
             }
         }
