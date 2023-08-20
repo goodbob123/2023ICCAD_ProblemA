@@ -1217,7 +1217,9 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
             matrixSolverPeriodInstance = 0;
             previousTime = clock();
         }
+        cerr << "matrix start" << endl;
         bool inputResult = matrixSolver.assumpSolve();
+        cerr << "matrix end" << endl;
         if (!inputResult) {
             cout << "cannot find other input mapping" << endl;
             return false;
@@ -1270,11 +1272,16 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
         for (int i = 0; i < redundantInput_y.size(); ++i) {
             miterSolver.assumeProperty(y[redundantInput_y[i]].getVar(), false);
         }
+        cerr << "miter start" << endl;
 
         if (miterSolve()) {  // UNSAT -> find a valid mapping
             // Update current answer and block answer
+        cerr << "miter end" << endl;
+
             return true;
         } else {
+        cerr << "miter end" << endl;
+
             // cout << "QQ" << endl;
         }
     }
@@ -1730,12 +1737,36 @@ void BMatchSolver::printPossibleM(bool mi, bool mo) {
 
 void BMatchSolver::possibleMethod() {
     printPossibleM(true, true);
-    bool modify = false;
+    vector<vector<bool>> originPossibleMi;
+    vector<vector<bool>> originPossibleMo;
+    for (int i = 0; i < possibleMi.size(); ++i)
+        originPossibleMi.push_back(possibleMi[i]);
+    for (int i = 0; i < possibleMo.size(); ++i)
+        originPossibleMo.push_back(possibleMo[i]);
+    bool modify;
     do {
+        modify = false;
         modify |= checkPossibleMi();
         modify |= checkPossibleMo();
     }
-    while (!modify);
+    while (modify);
+    printPossibleM(true, true);
+    cout << "--------------- Possible Mi Diff ----------" << endl;
+    for (int i = 0; i < possibleMi.size(); ++i) {
+        for (int j = 0; j < possibleMi[0].size(); ++j) {
+            assert(!(!originPossibleMi[i][j] && possibleMi[i][j]));
+            cout << (originPossibleMi[i][j] ^ possibleMi[i][j]);
+        }
+        cout << endl;
+    }
+    cout << "--------------- Possible Mo Diff ----------" << endl;
+    for (int i = 0; i < possibleMo.size(); ++i) {
+        for (int j = 0; j < possibleMo[0].size(); ++j) {
+            assert(!(!originPossibleMo[i][j] && possibleMo[i][j]));
+            cout << (originPossibleMo[i][j] ^ possibleMo[i][j]);
+        }
+        cout << endl;
+    }
     return;
 }
 
@@ -1756,9 +1787,9 @@ bool BMatchSolver::checkPossibleMi() {
             for (int j = 0; j < f.size(); ++j) {
                 if (SuppX_y.find(j) != SuppX_y.end()) // f[j] \in Supp(X_y) 
                     continue;
-                if (possibleMi[*it][j])
+                if (possibleMo[*it][j])
                     modify = true;
-                possibleMi[*it][j] = false;
+                possibleMo[*it][j] = false;
             }
         }
     }
