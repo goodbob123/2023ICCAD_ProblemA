@@ -539,7 +539,7 @@ void BMatchSolver::run() {
         //     cout << "No output pairs found!" << endl;
         //     break;
         // }
-        cout << "r0" << endl;
+        // cout << "r0" << endl;
         vector<Order*> outputPairs;
         if (toStep) {
             cur = outMgr.step();
@@ -568,7 +568,7 @@ void BMatchSolver::run() {
         // }
         // outMgr.printBusConnection();
         // cout << "__________" << endl;
-        cout << "r1" << endl;
+        // cout << "r1" << endl;
 
         vector<vector<bool>> negation(1, vector<bool>());
         for (size_t i = 0; i < outputPairs.size(); ++i) {
@@ -591,7 +591,7 @@ void BMatchSolver::run() {
             // }
             if (negation.size() > 50) negation.resize(50);
         }
-        cout << "r2" << endl;
+        // cout << "r2" << endl;
 
         // for (auto vec: negation) {
         //     for (auto n: vec) cout << n << " ";
@@ -623,7 +623,7 @@ void BMatchSolver::run() {
             }
             // cout << "not solve!" << endl;
         }
-        cout << "r3" << endl;
+        // cout << "r3" << endl;
         if (!considerAll) assert(validSolNum < 2);
         negation.resize(validSolNum);
         bool canPos = false;
@@ -639,7 +639,7 @@ void BMatchSolver::run() {
         if (!canNeg) outputPairs[end]->failNeg();
 
         toStep = negation.size() != 0;
-        cout << "r4" << endl;
+        // cout << "r4" << endl;
 
         // origin output SAT
         // set<Var> currentResult;
@@ -1264,11 +1264,11 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
         //                                    true);
         //     }
         // }
-        for (int j = 0; j < redundantInput_x.size(); ++j) {
-            miterSolver.assumeProperty(x[j].getVar(), false);
+        for (int i = 0; i < redundantInput_x.size(); ++i) {
+            miterSolver.assumeProperty(x[redundantInput_x[i]].getVar(), false);
         }
         for (int i = 0; i < redundantInput_y.size(); ++i) {
-            miterSolver.assumeProperty(y[i].getVar(), false);
+            miterSolver.assumeProperty(y[redundantInput_y[i]].getVar(), false);
         }
 
         if (miterSolve()) {  // UNSAT -> find a valid mapping
@@ -1315,6 +1315,7 @@ bool BMatchSolver::miterSolve() {
         int score = getScore();
         if (score > bestScore) {
             outputAns();
+            finalCheck();
             bestScore = score;
         }
         cout << "Score: " << score << ", Best Score: " << bestScore << endl;
@@ -1340,6 +1341,7 @@ bool BMatchSolver::miterSolve() {
 
         for (int i = 0; i < fStar.size(); ++i) {
             for (int j = 0; j < f.size(); ++j) {
+                if (f[j].nofSupport() > g[i].nofSupport()) continue;
                 if (miterSolver.getValue(g[i].getVar()) !=
                     miterSolver.getValue(f[j].getVar())) {
                     lits.push_back(~Lit(c[i][j].matrixVar));
@@ -1647,6 +1649,7 @@ void BMatchSolver::simulate() {
     for (int times = 0; times < 64; ++times) {
         for (int i = 0; i < fStar.size(); ++i) {
             for (int j = 0; j < f.size(); ++j) {
+                if (f[j].nofSupport() > g[i].nofSupport()) continue;
                 // A(x_l= y_k) & B -> f!=g
                 // f=g -> ~A or ~B
                 // ( !(f=g) + ~A(x_l=y_k) + ~B)
@@ -1807,8 +1810,8 @@ bool BMatchSolver::finalCheck() {
                                        ans_d[i][j]);
         }
     }
-    if (miterSolve()) {  // UNSAT -> find a valid mapping
-        // Update current answer and block answer
+    bool miterResult = miterSolver.assumpSolve();
+    if (!miterResult) {
         cout << "\033[1;32mCORRECT ANSWER\033[0m" << endl;
         return true;
     } else {

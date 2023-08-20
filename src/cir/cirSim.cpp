@@ -51,10 +51,10 @@ void CirMgr::randomSim() {
     uniform_int_distribution<uint64_t> distribution(0, numeric_limits<uint64_t>::max());
     int limits = 8;
     if (PIs.size() > 100) {
-        limits = 200;
+        limits = 20;
     }
     if (PIs.size() > 1000) {
-        limits = 1000;
+        limits = 50;
     }
 
     while (patternSize <= limits) {

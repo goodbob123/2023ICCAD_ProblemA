@@ -339,8 +339,6 @@ vector<vector<pair<CirGate*, bool>>> CirMgr::fraigForGroup() {
                         inputPattern.clear();
                         inputPattern = vector<uint64_t>(PIs.size());
                         numPattern = 0;
-                        // restart again
-                        i = 0;
                     }
                 }
             }
@@ -380,16 +378,17 @@ vector<vector<pair<CirGate*, bool>>> CirMgr::fraigForGroup() {
         tmp.clear();
     }
     vector<vector<pair<CirGate*, bool>>> new_equalGroups;
-    bool uniqueFlag = true;
     for (size_t i = 0; i < equalGroups.size(); ++i) {
-        for (size_t j = 0; j < equalGroups.size(); ++j) {
-            if (i == j) continue;
-            if(groupBySet[i]==groupBySet[j]) uniqueFlag=false;
-            if (std::includes(groupBySet[j].begin(), groupBySet[j].end(), groupBySet[i].begin(), groupBySet[i].end())) uniqueFlag = false;
+        for (size_t j = i + 1; j < equalGroups.size(); ++j) {
+            if (groupBySet[i].empty()) break;
+            if (groupBySet[i] == groupBySet[j]) {
+                groupBySet[j].clear();
+            } else if (std::includes(groupBySet[i].begin(), groupBySet[i].end(), groupBySet[j].begin(), groupBySet[j].end())) {
+                groupBySet[j].clear();
+            }
         }
-        if (uniqueFlag) new_equalGroups.push_back(equalGroups[i]);
-        uniqueFlag = true;
+        if (!groupBySet[i].empty())
+            new_equalGroups.push_back(equalGroups[i]);
     }
-
     return new_equalGroups;
 }
