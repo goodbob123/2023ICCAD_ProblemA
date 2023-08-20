@@ -191,11 +191,12 @@ class Order
             grp = 0;
             // support_atri = fport_ptr->nofSupport() + gport_ptr->nofSupport();
             support_atri = gport_ptr->nofSupport();
-            support_span_atri = gport_ptr->nofSupport() - fport_ptr->nofSupport();
             bus_atri = (fBus_ptr->getBusSize() == gBus_ptr->getBusSize());
             cone_atri = gport_ptr->getCoverage();
+
+            support_span_atri = gport_ptr->nofSupport() - fport_ptr->nofSupport();
             cone_span_atri = gport_ptr->getCoverage() - fport_ptr->getCoverage();
-            //if (cone_span_atri < 0) cone_span_atri = -cone_span_atri;
+            if (cone_span_atri < 0) cone_span_atri = -cone_span_atri;
         }
         friend class Comparator;
         friend class OutPortMgr;
@@ -219,6 +220,8 @@ class Order
         bool isSameGrp(size_t numConstraint) const { return (grp == numConstraint); }
 
         void sameGrp() { ++grp; }
+        void setConeSpan(int coneSpan) {cone_span_atri = coneSpan; }
+        void setSupportSpan(int supportSpan) {support_span_atri = supportSpan; }
         void enable(Order* _order_nxt) {
             // make the Order able to assign and unsign
             // _order_nxt record next Order in chain
@@ -301,7 +304,7 @@ class Order
             Order* pre = backToPre(just_back);
             if (pre == 0) return 0;
             while (pre->assign_nxt == 0 || pre->assign_nxt->isForbid() || pre->assign_nxt->isAssign()) {
-                if (pre->assign_nxt == 0) pre = pre->backToPre(); // no new assignment, need further backtrack
+                if (pre->assign_nxt == 0) pre = pre->backToPre(just_back); // no new assignment, need further backtrack
                 else pre->assign_nxt = pre->assign_nxt->order_nxt; // next Order in chain is not available
                 if (pre == 0) return 0; // return 0 if no pre
             }
@@ -380,22 +383,34 @@ class Order
 
 // from big to small
 enum grpChoice {
-    Support
+    Support,
+    Cone
+};
+enum supportSpan {
+    fBigS,
+    fSmallS,
+    ordNearS
+};
+enum coneSpan {
+    AbsC,
+    fBigC,
+    fSmallC,
+    ordNearC
 };
 class Comparator {  
     // cmp num Support
     // since used in OutPortMgr, Port is stored as second of pair
     public:
         bool operator() (const Order* a, const Order* b) {
-            assert(a->support_span_atri >= 0);
-            assert(b->support_span_atri >= 0);
+            // assert(a->support_span_atri >= 0);
+            // assert(b->support_span_atri >= 0);
             if (a->support_atri == b->support_atri) {
                 if (a->cone_atri == b->cone_atri) {
                     if (a->support_span_atri == b->support_span_atri) {
                         if (a->cone_span_atri == b->cone_span_atri) {
                             return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
-                        } else return a->cone_span_atri > b->cone_span_atri;
-                    } else return a->support_span_atri > b->support_span_atri;
+                        } else return a->cone_span_atri < b->cone_span_atri;
+                    } else return a->support_span_atri < b->support_span_atri;
                 } else return a->cone_atri < b->cone_atri;
             } else return a->support_atri < b->support_atri;
         }
@@ -405,6 +420,7 @@ class Comparator {
         bool operator() (const pair<pair<grpChoice, size_t>, Port>& a, const pair<pair<grpChoice, size_t>, Port>& b) {
             assert(a.first.first == b.first.first);
             if (a.first.first == grpChoice::Support) return a.second.nofSupport() > b.second.nofSupport();
+            else if (a.first.first == grpChoice::Cone) return a.second.getCoverage() > b.second.getCoverage();
             cerr << "no such compare" << endl;
             assert(0);
         }
@@ -424,6 +440,8 @@ class OutPortMgr
             input_bias = -1;
             is_one_to_one = true;
             is_bus_one_to_one = true;
+            support_span_type = supportSpan::fBigS;
+            cone_span_type = coneSpan::AbsC;
             num_constraint = 0; // ++ when constraint on grp used
         }
         void setPorts(vector<Port>& _f, vector<Port>& _g) {
@@ -441,9 +459,11 @@ class OutPortMgr
         void setInputBias(int _bias) {
             input_bias = _bias;
         }
-        void setAssumption(bool _is_one_to_one = true, bool _is_bus_one_to_one = true) {
+        void setAssumption(bool _is_one_to_one = true, bool _is_bus_one_to_one = true, supportSpan _supportOrd_type = supportSpan::fBigS, coneSpan _coneOrd_type = coneSpan::AbsC) {
             is_one_to_one = _is_one_to_one;
             is_bus_one_to_one = _is_bus_one_to_one;
+            support_span_type = _supportOrd_type;
+            cone_span_type = _coneOrd_type;
         }
         bool checkSetting() {
             if (fptr == 0 || gptr == 0) {
@@ -493,6 +513,7 @@ class OutPortMgr
             // cout << "Mgr2" << endl;
             genMaps();
             // cout << "Mgr1" << endl;
+            genAtri();
             genHeuristicOrder();    // i.e. gen possible order chain
             cout << "done outPortMgr init" << endl;
             return true;
@@ -568,6 +589,8 @@ class OutPortMgr
     private:
         bool is_one_to_one; // do we assume output is one to one
         bool is_bus_one_to_one;
+        supportSpan support_span_type;
+        coneSpan cone_span_type;
         vector<Port>* fptr; // copy of f
         vector<Port>* gptr; // copy of g
         Buses* fBusptr;
@@ -668,6 +691,64 @@ class OutPortMgr
             //         cout << ord.getFid() << ":" << ord.getFBusptr() << " " <<  ord.getGid() << ":" << ord.getGBusptr() << endl;
             //     }
             // }
+        }
+        // init
+        void genAtri() {
+            vector<pair< pair<grpChoice, size_t>, Port> > f_sort;
+            vector<pair< pair<grpChoice, size_t>, Port> > g_sort;
+            for (size_t i = 0; i < fptr->size(); ++i) {
+                f_sort.push_back(pair<pair<grpChoice, size_t>, Port> (pair<grpChoice, size_t> (grpChoice::Support, i), fptr->at(i)));
+            }
+            for (size_t i = 0; i < gptr->size(); ++i) {
+                g_sort.push_back(pair<pair<grpChoice, size_t>, Port> (pair<grpChoice, size_t> (grpChoice::Support, i), gptr->at(i)));
+            }
+            for (size_t i_g = 0; i_g < g_sort.size(); ++i_g) {
+                for (size_t i_f = 0; i_f < f_sort.size(); ++i_f) {
+                    size_t fid = f_sort[i_f].first.second;
+                    size_t gid = g_sort[i_g].first.second;
+                    Order& ord = order_map[gid][fid];
+                    int supportOrd;
+                    if (support_span_type == supportSpan::fBigS) {
+                        supportOrd = ord.getGptr()->nofSupport() - ord.getFptr()->nofSupport();
+                    } else if (support_span_type == supportSpan::fSmallS) {
+                        supportOrd = ord.getFptr()->nofSupport() - ord.getGptr()->nofSupport();
+                    } else if (support_span_type == supportSpan::ordNearS) {
+                        if (i_g > i_f) supportOrd = i_g - i_f;
+                        else supportOrd = i_f - i_g;
+                    }
+                    ord.setSupportSpan(supportOrd);
+                }
+            }
+
+            f_sort.clear();
+            g_sort.clear();
+            for (size_t i = 0; i < fptr->size(); ++i) {
+                f_sort.push_back(pair<pair<grpChoice, size_t>, Port> (pair<grpChoice, size_t> (grpChoice::Cone, i), fptr->at(i)));
+            }
+            for (size_t i = 0; i < gptr->size(); ++i) {
+                g_sort.push_back(pair<pair<grpChoice, size_t>, Port> (pair<grpChoice, size_t> (grpChoice::Cone, i), gptr->at(i)));
+            }
+            for (size_t i_g = 0; i_g < g_sort.size(); ++i_g) {
+                for (size_t i_f = 0; i_f < f_sort.size(); ++i_f) {
+                    size_t fid = f_sort[i_f].first.second;
+                    size_t gid = g_sort[i_g].first.second;
+                    Order& ord = order_map[gid][fid];
+                    int coneOrd;
+                    if (cone_span_type == coneSpan::AbsC) {
+                        coneOrd = ord.getGptr()->getCoverage() - ord.getFptr()->getCoverage();
+                        if (coneOrd < 0) coneOrd = -coneOrd;
+                    } else if (cone_span_type == coneSpan::fBigC) {
+                        coneOrd = ord.getGptr()->getCoverage() - ord.getFptr()->getCoverage();
+                    } else if (cone_span_type == coneSpan::fSmallC) {
+                        coneOrd = ord.getFptr()->getCoverage() - ord.getGptr()->getCoverage();
+                    } else if (cone_span_type == coneSpan::ordNearC) {
+                        if (i_g > i_f) coneOrd = i_g - i_f;
+                        else coneOrd = i_f - i_g;
+                    }
+                    ord.setConeSpan(coneOrd);
+                }
+            }
+
         }
         // init
         void genHeuristicOrder() {

@@ -481,7 +481,7 @@ void BMatchSolver::setOutMgr() {
     outMgr.setCirMgr(c1, c2);
     assert(y.size() >= x.size());
     cout << y.size() << " " << x.size() << endl;
-    outMgr.setAssumption();
+    outMgr.setAssumption(true, true, supportSpan::fSmallS, coneSpan::AbsC);
     outMgr.setInputBias(y.size() - x.size());
     if (!outMgr.init()) {
         cerr << "outMgr not correctly set" << endl;
@@ -1264,8 +1264,8 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
         //                                    true);
         //     }
         // }
-        for (int i = 0; i < redundantInput_x.size(); ++i) {
-            miterSolver.assumeProperty(x[redundantInput_x[i]].getVar(), false);
+        for (int j = 0; j < redundantInput_x.size(); ++j) {
+            miterSolver.assumeProperty(x[redundantInput_x[j]].getVar(), false);
         }
         for (int i = 0; i < redundantInput_y.size(); ++i) {
             miterSolver.assumeProperty(y[redundantInput_y[i]].getVar(), false);
