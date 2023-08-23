@@ -167,6 +167,18 @@ class Order
     public:
         Order() {
             is_head = true;
+            is_assign = false;
+            is_connect_bus = false;
+            en = false;   // should only changed in OutPortMgr::genHeuristicOrder
+            id = 0;
+            is_forbid = true;
+            forbid_order = vector<Order*> ();
+
+            order_nxt = 0;  // should only changed in OutPortMgr::genHeuristicOrder
+            assign_nxt = 0;
+            assign_pre = 0;
+
+            back_cnt = 0;
         }
         Order(Port* _gport_ptr, size_t _gport_id, BusInfo* _gBus_ptr, Port* _fport_ptr, size_t _fport_id, BusInfo* _fBus_ptr) {
             is_head = false;
@@ -187,6 +199,8 @@ class Order
             order_nxt = 0;  // should only changed in OutPortMgr::genHeuristicOrder
             assign_nxt = 0;
             assign_pre = 0;
+
+            back_cnt = 0;
 
             grp = 0;
             // support_atri = fport_ptr->nofSupport() + gport_ptr->nofSupport();
@@ -220,9 +234,13 @@ class Order
         BusInfo* getGBusptr() const { return gBus_ptr; }
         bool isSameGrp(size_t numConstraint) const { return (grp == numConstraint); }
 
+        size_t getBackCnt() { return back_cnt; }
+        void resetBackCnt() { back_cnt = 0; }
+
         void sameGrp() { ++grp; }
         void setConeSpan(int coneSpan) {cone_span_atri = coneSpan; }
         void setSupportSpan(int supportSpan) {support_span_atri = supportSpan; }
+        
         void enable(Order* _order_nxt) {
             // make the Order able to assign and unsign
             // _order_nxt record next Order in chain
@@ -283,15 +301,21 @@ class Order
             Order* pre = assign_pre;
             if (pre != 0) {
                 assert(assign_pre->en);
-                if (!just_back) pre->assign_nxt = order_nxt;
+                if (!just_back) {
+                    pre->assign_nxt = order_nxt;
+                    // (pre->back_cnt)++;
+                }
             }
 
             // unassign
             is_assign = false;
-            assign_nxt = 0;
-            assign_pre = 0;
+            is_connect_bus = false;
             is_neg = true;
             is_pos = true;
+
+            assign_nxt = 0;
+            assign_pre = 0;
+
             updateForbidOrder(0);   // clear forbid_order
             if (!is_head && is_connect_bus) {
                 BusInfo* gBus_buf = fBus_ptr->disconnectBack();
@@ -299,7 +323,8 @@ class Order
                 BusInfo* fBus_buf = gBus_ptr->disconnectBack();
                 assert(fBus_buf == fBus_ptr);
             }
-            is_connect_bus = false;
+
+            back_cnt = 0;
 
             return pre;
         }
@@ -309,9 +334,11 @@ class Order
             if (pre == 0) return 0;
             while (pre->assign_nxt == 0 || pre->assign_nxt->isForbid() || pre->assign_nxt->isAssign()) {
                 if (pre->assign_nxt == 0) pre = pre->backToPre(just_back); // no new assignment, need further backtrack
+                else if (pre->assign_nxt->isAssign()) assert(0);
                 else pre->assign_nxt = pre->assign_nxt->order_nxt; // next Order in chain is not available
                 if (pre == 0) return 0; // return 0 if no pre
             }
+            if (!just_back && !pre->isHead()) (pre->back_cnt)++;
             return pre;
         }
         Order* step() {
@@ -377,6 +404,8 @@ class Order
         Order* assign_nxt; // next Order in assignment chain
         Order* assign_pre; // pre Order in assignment chain
 
+        size_t back_cnt;
+
         size_t grp;
         size_t support_atri;
         size_t cone_atri;
@@ -386,6 +415,12 @@ class Order
 };
 
 // from big to small
+enum stepWay {
+    normal,
+    constSkip,
+    noFullMarkThenSkip,
+    chanceSkip
+};
 enum grpChoice {
     Support,
     Cone
@@ -410,11 +445,13 @@ class Comparator {
             // assert(b->support_span_atri >= 0);
             if (a->support_atri == b->support_atri) {
                 if (a->cone_atri == b->cone_atri) {
-                    if (a->support_span_atri == b->support_span_atri) {
-                        if (a->cone_span_atri == b->cone_span_atri) {
-                            return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
-                        } else return a->cone_span_atri < b->cone_span_atri;
-                    } else return a->support_span_atri < b->support_span_atri;
+                    if (a->gport_id == b->gport_id) {
+                        if (a->support_span_atri == b->support_span_atri) {
+                            if (a->cone_span_atri == b->cone_span_atri) {
+                                return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
+                            } else return a->cone_span_atri < b->cone_span_atri;
+                        } else return a->support_span_atri < b->support_span_atri;
+                    } else return a->gport_id < b->gport_id;
                 } else return a->cone_atri < b->cone_atri;
             } else return a->support_atri < b->support_atri;
         }
@@ -439,6 +476,8 @@ class OutPortMgr
             is_bus_one_to_one = true;
             support_span_type = supportSpan::fBigS;
             cone_span_type = coneSpan::AbsC;
+            step_way = stepWay::normal;
+
             fptr = 0;
             gptr = 0;
             fBusptr = 0;
@@ -462,11 +501,16 @@ class OutPortMgr
         void setInputBias(int _bias) {
             input_bias = _bias;
         }
-        void setAssumption(bool _is_one_to_one = true, bool _is_bus_one_to_one = true, supportSpan _supportOrd_type = supportSpan::fBigS, coneSpan _coneOrd_type = coneSpan::AbsC) {
+        void setAssumption(bool _is_one_to_one = true, bool _is_bus_one_to_one = true) {
             is_one_to_one = _is_one_to_one;
             is_bus_one_to_one = _is_bus_one_to_one;
+        }
+        void setAtriType(supportSpan _supportOrd_type = supportSpan::fBigS, coneSpan _coneOrd_type = coneSpan::AbsC) {
             support_span_type = _supportOrd_type;
             cone_span_type = _coneOrd_type;
+        }
+        void setStepWay(stepWay _way = stepWay::normal) {
+            step_way = _way;
         }
         bool checkSetting() {
             if (fptr == 0 || gptr == 0) {
@@ -543,9 +587,38 @@ class OutPortMgr
         }
         Order* backTrack(bool just_back = false) {
             // backtrack
+            assert(assign_current != 0);
             if (assign_current->isHead()) cout << "at head" << endl;
             is_backtrack = true;
+            size_t view_g = assign_current->getGid();
+            Order* buff_g = assign_current;
             assign_current = assign_current->backTrack(just_back);
+            if (assign_current == 0 || assign_current->isHead()) return assign_current;
+
+            size_t back_cnt = assign_current->getBackCnt();
+            if (step_way == stepWay::constSkip) {
+                while (back_cnt > 10) {
+                    assign_current = assign_current->backTrack(just_back);
+                    if (assign_current == 0 || assign_current->isHead()) return assign_current;
+                    back_cnt = assign_current->getBackCnt();
+                }
+            } else if (step_way == stepWay::noFullMarkThenSkip) {
+                int nxt_g;
+                if (assign_current->getAssignNxt() == 0) nxt_g = -1;
+                else nxt_g = assign_current->getAssignNxt()->getGid();
+                while (view_g != nxt_g) {
+                    view_g = assign_current->getGid();
+                    buff_g->printMapping();
+                    assign_current->getAssignNxt()->printMapping();
+                    assign_current = assign_current->backTrack(just_back);
+                    if (assign_current == 0 || assign_current->isHead()) return assign_current;
+                    cout << "get in" << endl;
+                    if (assign_current->getAssignNxt() == 0) nxt_g = -1;
+                    else nxt_g = assign_current->getAssignNxt()->getGid();
+                    cout << "get out" << endl;
+                    
+                }
+            }
             return assign_current;
         }
         Order* getHead() { return assign_head; }
@@ -622,6 +695,8 @@ class OutPortMgr
         bool is_bus_one_to_one;
         supportSpan support_span_type;
         coneSpan cone_span_type;
+        stepWay step_way;
+
         vector<Port>* fptr; // copy of f
         vector<Port>* gptr; // copy of g
         Buses* fBusptr;
@@ -862,9 +937,9 @@ class OutPortMgr
             sort(order_sort.begin(), order_sort.end(), Comparator());
             
             // cout << "gen4" << endl;
-            // for (auto ord: order_sort) {
-            //     ord->printMapping();
-            // }
+            for (auto ord: order_sort) {
+                ord->printMapping();
+            }
             Order* pre = 0;
             Order* nxt = assign_head;
             for (size_t i = 0; i < order_sort.size(); ++i) {

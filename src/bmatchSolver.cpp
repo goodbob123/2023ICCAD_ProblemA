@@ -487,7 +487,9 @@ void BMatchSolver::setOutMgr() {
     outMgr.setEqInfo(eqgrp_f, eqgrp_g);
     assert(y.size() >= x.size());
     cout << y.size() << " " << x.size() << endl;
-    outMgr.setAssumption(true, true, supportSpan::fSmallS, coneSpan::AbsC);
+    outMgr.setAssumption(true, true);
+    outMgr.setAtriType(supportSpan::fSmallS, coneSpan::AbsC);
+    outMgr.setStepWay(stepWay::normal);
     outMgr.setInputBias(y.size() - x.size());
     if (!outMgr.init()) {
         cerr << "outMgr not correctly set" << endl;
