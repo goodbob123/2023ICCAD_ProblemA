@@ -1819,3 +1819,65 @@ bool BMatchSolver::finalCheck() {
         return false;
     }
 }
+constexpr unsigned int str2int(const char* str, int h = 0) {
+    return !str[h] ? 5381 : (str2int(str, h + 1) * 33) ^ str[h];
+}
+
+void BMatchSolver::printGateInfoHelper(unordered_map<string, vector<string>>& map, string fanout, vector<int>& gateCount) {
+    if (map.find(fanout) != map.end()) {
+        // GATE = [0]
+        switch (str2int(map[fanout][0].c_str())) {
+            case str2int("and"):
+                ++gateCount[0];
+                break;
+            case str2int("or"):
+                ++gateCount[1];
+                break;
+
+            case str2int("nand"):
+                ++gateCount[2];
+                break;
+
+            case str2int("nor"):
+                ++gateCount[3];
+                break;
+
+            case str2int("not"):
+                ++gateCount[4];
+                break;
+
+            case str2int("xor"):
+                ++gateCount[5];
+                break;
+            case str2int("xnor"):
+                ++gateCount[6];
+                break;
+            case str2int("buf"):
+                ++gateCount[7];
+                break;
+        }
+        printGateInfoHelper(map, map[fanout][1], gateCount);
+        if (map[fanout].size() == 3) printGateInfoHelper(map, map[fanout][2], gateCount);
+    }
+}
+
+void BMatchSolver::printGateInfo(unordered_map<string, vector<string>>& map_1, unordered_map<string, vector<string>>& map_2) {
+    cout << "--------------- Circuit 1 --------------- " << endl;
+    cout << setw(8) << " " << setw(7) << "and" << setw(7) << "or" << setw(7) << "nand" << setw(7) << "nor" << setw(7) << "not" << setw(7) << "xor" << setw(7) << "xnor" << setw(7) << "buf" << endl;
+    for (size_t i = 0; i < c1->POs.size(); ++i) {
+        vector<int> gateCount(8, 0);
+        cout << setw(6) << c1->getIOName(c1->POs[i]) << " : ";
+        printGateInfoHelper(map_1, c1->getIOName(c1->POs[i]), gateCount);
+        for (size_t j = 0; j < 8; ++j) cout << setw(6) << gateCount[j] << " ";
+        cout << endl;
+    }
+    cout << "--------------- Circuit 2 --------------- " << endl;
+    cout << setw(8) << " " << setw(7) << "and" << setw(7) << "or" << setw(7) << "nand" << setw(7) << "nor" << setw(7) << "not" << setw(7) << "xor" << setw(7) << "xnor" << setw(7) << "buf" << endl;
+    for (size_t i = 0; i < c2->POs.size(); ++i) {
+        vector<int> gateCount(8, 0);
+        cout << setw(6) << c2->getIOName(c2->POs[i]) << " : ";
+        printGateInfoHelper(map_2, c2->getIOName(c2->POs[i]), gateCount);
+        for (size_t j = 0; j < 8; ++j) cout << setw(6) << gateCount[j] << " ";
+        cout << endl;
+    }
+}

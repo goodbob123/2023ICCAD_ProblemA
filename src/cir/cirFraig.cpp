@@ -390,5 +390,12 @@ vector<vector<pair<CirGate*, bool>>> CirMgr::fraigForGroup() {
         if (!groupBySet[i].empty())
             new_equalGroups.push_back(equalGroups[i]);
     }
+    cout << " --------- Equal Group ----------" << endl;
+    for (size_t i = 0; i < new_equalGroups.size(); ++i) {
+        for (size_t j = 0; j < new_equalGroups[i].size(); ++j) {
+            cout << getIOName(new_equalGroups[i][j].first) << " ";
+        }
+        cout << endl;
+    }
     return new_equalGroups;
 }

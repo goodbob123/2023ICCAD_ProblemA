@@ -961,6 +961,8 @@ class BMatchSolver {
     void printInfo() const;
     void printBus(const Buses& bus) const;
     void printSupport(const vector<Port>& portTarget, const vector<Port>& portInv) const;
+    void printGateInfoHelper(unordered_map<string, vector<string>>& map, string fanout, vector<int>& gateCount);
+    void printGateInfo(unordered_map<string, vector<string>>& map_1, unordered_map<string, vector<string>>& map_2);
     void busConstraint();
     void testOutputMgr();
     void simulate();
