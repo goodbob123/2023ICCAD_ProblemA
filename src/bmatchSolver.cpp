@@ -478,10 +478,18 @@ void BMatchSolver::outputPreprocess() {
 void BMatchSolver::setOutMgr() {
     outMgr.setPorts(f, g);
     outMgr.setBuses(fBus, gBus);
-    outMgr.setCirMgr(c1, c2);
+    vector<vector<pair<int, bool> > > eqgrp_f, eqgrp_g;
+    getEqualGroup(eqgrp_f, eqgrp_g);
+    for (auto grp: eqgrp_g) {
+        for (auto g: grp) cout << g.first << " ";
+        cout << endl;
+    }
+    outMgr.setEqInfo(eqgrp_f, eqgrp_g);
     assert(y.size() >= x.size());
     cout << y.size() << " " << x.size() << endl;
-    outMgr.setAssumption(true, true, supportSpan::fSmallS, coneSpan::AbsC);
+    outMgr.setAssumption(true, true);
+    outMgr.setAtriType(supportSpan::fSmallS, coneSpan::AbsC);
+    outMgr.setStepWay(stepWay::normal);
     outMgr.setInputBias(y.size() - x.size());
     if (!outMgr.init()) {
         cerr << "outMgr not correctly set" << endl;
