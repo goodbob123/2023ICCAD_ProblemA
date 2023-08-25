@@ -37,7 +37,7 @@ constexpr unsigned int str2int(const char* str, int h = 0) {
     return !str[h] ? 5381 : (str2int(str, h + 1) * 33) ^ str[h];
 }
 
-void parser(string in_filename, string out_filename) {
+unordered_map<string, vector<string>> parser(string in_filename, string out_filename) {
     string line, buf;
     ifstream in_file(in_filename);
     ofstream out_file(out_filename);
@@ -48,7 +48,7 @@ void parser(string in_filename, string out_filename) {
     std::getline(in_file, line);
     if (line.find("module") == string::npos) {
         cerr << "module not found" << endl;
-        return;
+        // return;
     }
     buf = line;
     while (line.find(";") == string::npos) {
@@ -62,7 +62,7 @@ void parser(string in_filename, string out_filename) {
         if (pos == -1) {
             cerr << "file format error" << endl
                  << buf << endl;
-            return;
+            // return;
         };
 
         // buf.insert(pos, tag);
@@ -79,7 +79,7 @@ void parser(string in_filename, string out_filename) {
     std::getline(in_file, line);
     if (line.find("input") == string::npos) {
         cerr << "input not found" << endl;
-        return;
+        // return;
     }
     buf = line;
     while (line.find(";") == string::npos) {
@@ -93,7 +93,7 @@ void parser(string in_filename, string out_filename) {
         if (pos == -1) {
             cerr << "file format error" << endl
                  << buf << endl;
-            return;
+            // return;
         };
 
         // buf.insert(pos, tag);
@@ -110,7 +110,7 @@ void parser(string in_filename, string out_filename) {
     std::getline(in_file, line);
     if (line.find("output") == string::npos) {
         cerr << "output not found" << endl;
-        return;
+        // return;
     }
     buf = line;
     while (line.find(";") == string::npos) {
@@ -124,7 +124,7 @@ void parser(string in_filename, string out_filename) {
         if (pos == -1) {
             cerr << "file format error" << endl
                  << buf << endl;
-            return;
+            // return;
         };
 
         // buf.insert(pos, tag);
@@ -141,7 +141,7 @@ void parser(string in_filename, string out_filename) {
     std::getline(in_file, line);
     if (line.find("wire") == string::npos) {
         cerr << "wire not found" << endl;
-        return;
+        // return;
     }
     buf = line;
     while (line.find(";") == string::npos) {
@@ -155,7 +155,7 @@ void parser(string in_filename, string out_filename) {
         if (pos == -1) {
             cerr << "file format error" << endl
                  << buf << endl;
-            return;
+            // return;
         };
 
         // buf.insert(pos, tag);
@@ -167,13 +167,16 @@ void parser(string in_filename, string out_filename) {
     out_file << buf << endl;
     buf.clear();
 
+    // key = fanout, value[0] = GATE, value[1] = fanin 0
+    unordered_map<string, vector<string>> circuitInfo;
+    vector<string> tmp;
     // Gate
     // read
     while (1) {
         std::getline(in_file, buf);
         if (buf.find("endmodule") != string::npos) {
             out_file << "endmodule" << endl;
-            return;
+            return circuitInfo;
         }
 
         // assign gate including (and, or, nand, nor, not, xor, xnor, buf)
@@ -187,7 +190,7 @@ void parser(string in_filename, string out_filename) {
         if (pos == -1) {
             cerr << "var1 format error" << endl
                  << buf << endl;
-            return;
+            // return;
         };
         var1 = buf.substr(pos, cut_pos);
         // if(var1 != "1'b0" && var1 != "1'b1") var1 = tag + var1;
@@ -198,7 +201,7 @@ void parser(string in_filename, string out_filename) {
         if (pos == -1) {
             cerr << "var2 format error" << endl
                  << buf << endl;
-            return;
+            // return;
         };
         var2 = buf.substr(pos, cut_pos);
         // if(var2 != "1'b0" && var2 != "1'b1") var2 = tag + var2;
@@ -216,41 +219,64 @@ void parser(string in_filename, string out_filename) {
         switch (str2int(gate_type.c_str())) {
             case str2int("and"):
                 ss << "assign " << var1 << " = " << var2 << " & " << var3 << ";\n";
+                tmp.push_back("and");
+                tmp.push_back(var2);
+                tmp.push_back(var3);
                 break;
 
             case str2int("or"):
                 ss << "assign " << var1 << " = " << var2 << " | " << var3 << ";\n";
+                tmp.push_back("or");
+                tmp.push_back(var2);
+                tmp.push_back(var3);
                 break;
 
             case str2int("nand"):
                 ss << "assign " << var1 << " = ~(" << var2 << " & " << var3 << ");\n";
+                tmp.push_back("nand");
+                tmp.push_back(var2);
+                tmp.push_back(var3);
                 break;
 
             case str2int("nor"):
                 ss << "assign " << var1 << " = ~(" << var2 << " | " << var3 << ");\n";
+                tmp.push_back("nor");
+                tmp.push_back(var2);
+                tmp.push_back(var3);
                 break;
 
             case str2int("not"):
                 ss << "assign " << var1 << " = ~" << var2 << ";\n";
+                tmp.push_back("not");
+                tmp.push_back(var2);
                 break;
 
             case str2int("xor"):
                 ss << "assign " << var1 << " = " << var2 << " ^ " << var3 << ";\n";
+                tmp.push_back("xor");
+                tmp.push_back(var2);
+                tmp.push_back(var3);
                 break;
-
             case str2int("xnor"):
+                tmp.push_back("xor");
+                tmp.push_back(var2);
+                tmp.push_back(var3);
                 ss << "assign " << var1 << " = ~(" << var2 << " ^ " << var3 << ");\n";
                 break;
 
             case str2int("buf"):
                 ss << "assign " << var1 << " = " << var2 << ";\n";
+                tmp.push_back("buf");
+                tmp.push_back(var2);
                 break;
 
             default:
                 cerr << "gate type \"" << gate_type << "\" not found" << endl;
-                return;
+                // return;
                 break;
         }
+        circuitInfo[var1] = tmp;
+        tmp.clear();
         // cerr<<ss.str();
         out_file << ss.str();
     }
@@ -506,8 +532,10 @@ int main(int argc, char* argv[]) {
     remove("name");
     remove("support");
 
-    parser(circuit_file1, "1.v");
-    parser(circuit_file2, "2.v");
+    unordered_map<string, vector<string>> gateInfo_1;
+    gateInfo_1 = parser(circuit_file1, "1.v");
+    unordered_map<string, vector<string>> gateInfo_2;
+    gateInfo_2 = parser(circuit_file2, "2.v");
 
     // abc
     write_aig();
@@ -550,6 +578,9 @@ int main(int argc, char* argv[]) {
     bmatchSolver.readBusInfo(bus, true);
     bmatchSolver.readBusInfo(bus, false);
     bmatchSolver.printInfo();
+    bmatchSolver.printGateInfo(gateInfo_1, gateInfo_2);
+    gateInfo_1.clear();
+    gateInfo_2.clear();
     int temp;
     //bmatchSolver.busConstraint();
     //cerr << "Enter 1 for bus constraint: ";
