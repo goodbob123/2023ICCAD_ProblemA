@@ -207,6 +207,7 @@ class Order
             support_atri = gport_ptr->nofSupport();
             bus_atri = (fBus_ptr->getBusSize() == gBus_ptr->getBusSize());
             cone_atri = gport_ptr->getCoverage();
+            remain_atri = 0;
 
             support_span_atri = gport_ptr->nofSupport() - fport_ptr->nofSupport();
             cone_span_atri = gport_ptr->getCoverage() - fport_ptr->getCoverage();
@@ -238,6 +239,7 @@ class Order
         void resetBackCnt() { back_cnt = 0; }
 
         void sameGrp() { ++grp; }
+        void setRemainAtri(int remain) { remain_atri = remain; }
         void setConeSpan(int coneSpan) {cone_span_atri = coneSpan; }
         void setSupportSpan(int supportSpan) {support_span_atri = supportSpan; }
         
@@ -250,7 +252,7 @@ class Order
             ++en_count;
             id = en_count;
         }
-        void updateForbidOrder(Order* _forbid_order) {
+        bool updateForbidOrder(Order* _forbid_order) {
             // if _forbid_order was able to be assigned
             // make _forbid_order unable to assign
             // and record in the vector forbid_order
@@ -263,6 +265,7 @@ class Order
                     forbid_order[i]->is_forbid = false;
                 }
                 forbid_order.clear();
+                return true;
             } else {
                 if (_forbid_order->is_assign) {
                     cerr << "forbid on assigned one, conflict" << endl;
@@ -270,6 +273,9 @@ class Order
                 } else if (!_forbid_order->is_forbid) {
                     _forbid_order->is_forbid = true;
                     forbid_order.push_back(_forbid_order);
+                    return true;
+                } else {
+                    return false;
                 }
             }
         }
@@ -409,6 +415,7 @@ class Order
         size_t grp;
         size_t support_atri;
         size_t cone_atri;
+        int remain_atri;
         int support_span_atri;
         int cone_span_atri;
         bool bus_atri;
@@ -419,7 +426,8 @@ enum stepWay {
     normal,
     constSkip,
     noFullMarkThenSkip,
-    chanceSkip
+    chanceSkip,
+    noFullMarkAndConstSkip
 };
 enum grpChoice {
     Support,
@@ -443,17 +451,27 @@ class Comparator {
         bool operator() (const Order* a, const Order* b) {
             // assert(a->support_span_atri >= 0);
             // assert(b->support_span_atri >= 0);
-            if (a->support_atri == b->support_atri) {
-                if (a->cone_atri == b->cone_atri) {
-                    if (a->gport_id == b->gport_id) {
-                        if (a->support_span_atri == b->support_span_atri) {
-                            if (a->cone_span_atri == b->cone_span_atri) {
-                                return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
-                            } else return a->cone_span_atri < b->cone_span_atri;
-                        } else return a->support_span_atri < b->support_span_atri;
-                    } else return a->gport_id < b->gport_id;
-                } else return a->cone_atri < b->cone_atri;
-            } else return a->support_atri < b->support_atri;
+            if (a->remain_atri == 1) {
+                if (a->remain_atri == b->remain_atri) {
+                    if (a->support_atri == b->support_atri) {
+                        if (a->cone_atri == b->cone_atri) {
+                            if (a->gport_id == b->gport_id) {
+                                return span_cf(a, b);
+                            } else return a->gport_id < b->gport_id;
+                        } else return a->cone_atri < b->cone_atri;
+                    } else return a->support_atri < b->support_atri;
+                } else return a->remain_atri < b->remain_atri;
+            } else {
+                if (a->support_atri == b->support_atri) {
+                    if (a->cone_atri == b->cone_atri) {
+                        if (a->remain_atri == b->remain_atri) {
+                            if (a->gport_id == b->gport_id) {
+                                return span_cf(a, b);
+                            } else return a->gport_id < b->gport_id;
+                        } else return a->remain_atri < b->remain_atri;
+                    } else return a->cone_atri < b->cone_atri;
+                } else return a->support_atri < b->support_atri;
+            }
         }
         bool operator() (set<int>& a, set<int>& b) {
             return a.size() < b.size();
@@ -464,6 +482,14 @@ class Comparator {
             else if (a.first.first == grpChoice::Cone) return a.second.getCoverage() > b.second.getCoverage();
             cerr << "no such compare" << endl;
             assert(0);
+        }
+    private:
+        bool span_cf(const Order* a, const Order* b) {
+            if (a->support_span_atri == b->support_span_atri) {
+                if (a->cone_span_atri == b->cone_span_atri) {
+                    return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
+                } else return a->cone_span_atri < b->cone_span_atri;
+            } else return a->support_span_atri < b->support_span_atri;
         }
 };
 
@@ -561,9 +587,9 @@ class OutPortMgr
             assign_current = assign_head;
             is_backtrack = false;
 
-            // cout << "Mgr2" << endl;
+            cout << "Mgr2" << endl;
             genMaps();
-            // cout << "Mgr1" << endl;
+            cout << "Mgr1" << endl;
             genSpanAtri();
             genHeuristicOrder();    // i.e. gen possible order chain
             cout << "done outPortMgr init" << endl;
@@ -582,6 +608,7 @@ class OutPortMgr
                 // cout << "step2" << endl;
                 noRemapRule();
                 unsplitBusRule();
+                allEqRule();
             }
             return assign_current;
         }
@@ -590,33 +617,55 @@ class OutPortMgr
             assert(assign_current != 0);
             if (assign_current->isHead()) cout << "at head" << endl;
             is_backtrack = true;
-            size_t view_g = assign_current->getGid();
-            Order* buff_g = assign_current;
+            int nxt_g, view_g;
+            size_t back_cnt;
+
+            view_g = assign_current->getGid();
+
             assign_current = assign_current->backTrack(just_back);
+            if (just_back) return assign_current;
             if (assign_current == 0 || assign_current->isHead()) return assign_current;
 
-            size_t back_cnt = assign_current->getBackCnt();
+            if (assign_current->getAssignNxt() == 0) nxt_g = -1;
+            else nxt_g = assign_current->getAssignNxt()->getGid();
+            back_cnt = assign_current->getBackCnt();
+
+            while (true) {
+                bool toBreak;
+                // noFullMarkUpdate(); // todo
+                if (step_way == stepWay::constSkip) if (back_cnt < 20) break;
+                if (step_way == stepWay::noFullMarkThenSkip) if (!no_full_mark) break;
+                if (step_way == stepWay::noFullMarkAndConstSkip) if (view_g == nxt_g && back_cnt < 20) break;
+
+                view_g = assign_current->getGid();
+                assign_current = assign_current->backTrack();
+                if (assign_current == 0 || assign_current->isHead()) return assign_current;
+                if (assign_current->getAssignNxt() == 0) nxt_g = -1;
+                else nxt_g = assign_current->getAssignNxt()->getGid();
+                back_cnt = assign_current->getBackCnt();
+            }
             if (step_way == stepWay::constSkip) {
-                while (back_cnt > 10) {
-                    assign_current = assign_current->backTrack(just_back);
+                while (back_cnt > 20) {
+                    assign_current = assign_current->backTrack();
                     if (assign_current == 0 || assign_current->isHead()) return assign_current;
                     back_cnt = assign_current->getBackCnt();
                 }
             } else if (step_way == stepWay::noFullMarkThenSkip) {
-                int nxt_g;
-                if (assign_current->getAssignNxt() == 0) nxt_g = -1;
-                else nxt_g = assign_current->getAssignNxt()->getGid();
                 while (view_g != nxt_g) {
                     view_g = assign_current->getGid();
-                    buff_g->printMapping();
-                    assign_current->getAssignNxt()->printMapping();
-                    assign_current = assign_current->backTrack(just_back);
+                    assign_current = assign_current->backTrack();
                     if (assign_current == 0 || assign_current->isHead()) return assign_current;
-                    cout << "get in" << endl;
                     if (assign_current->getAssignNxt() == 0) nxt_g = -1;
                     else nxt_g = assign_current->getAssignNxt()->getGid();
-                    cout << "get out" << endl;
-                    
+                }
+            } else if (step_way == stepWay::noFullMarkAndConstSkip) {
+                while (view_g != nxt_g || back_cnt > 20) {
+                    view_g = assign_current->getGid();
+                    assign_current = assign_current->backTrack();
+                    if (assign_current == 0 || assign_current->isHead()) return assign_current;
+                    if (assign_current->getAssignNxt() == 0) nxt_g = -1;
+                    else nxt_g = assign_current->getAssignNxt()->getGid();
+                    back_cnt = assign_current->getBackCnt();
                 }
             }
             return assign_current;
@@ -714,7 +763,29 @@ class OutPortMgr
         size_t num_constraint;
         Order* assign_head; // pseudo head of chain of possible assignment
         Order* assign_current;  // current end of assignment
+
         bool is_backtrack;  // whether previous step is backtracking
+        bool no_full_mark;
+        // eq_map to vec of eq
+        vector<size_t > getEqGrp(size_t id, bool is_g = true) {
+            vector<size_t > grp;
+            grp.push_back(id);
+            if (is_g) {
+                size_t g_view = geq_map[id];
+                while (g_view != id) {
+                    grp.push_back(g_view);
+                    g_view = geq_map[g_view];
+                }
+            } else {
+                size_t f_view = feq_map[id];
+                while (f_view != id) {
+                    grp.push_back(f_view);
+                    f_view = feq_map[f_view];
+                }
+            }
+            return grp;
+        }
+        
         // init
         void genMaps() {
             // todo
@@ -922,21 +993,28 @@ class OutPortMgr
             if (is_one_to_one) {
                 grouping(grpChoice::Support);
             }
-            // cout << "gen 0" <<endl;
+            cout << "gen 0" <<endl;
+            vector<int> remain;
             for (size_t i_g = 0; i_g < g_port.size(); ++i_g) {
+                int remain_atri = 0;
                 for (size_t i_f = 0; i_f < f_port.size(); ++i_f) {
                     pair<size_t, Port> fp = f_port[i_f];
                     pair<size_t, Port> gp = g_port[i_g];
                     order_buf = checkMapping(fp, gp);
-                    if (order_buf) order_sort.push_back(order_buf);
+                    if (order_buf) {
+                        order_sort.push_back(order_buf);
+                        ++remain_atri;
+                    }
                 }
+                remain.push_back(remain_atri);
             }
 
-            // cout << "gen1" << endl;
+            cout << "gen1" << endl;
+            genRemainAtri(remain);
             // make the order chain
             sort(order_sort.begin(), order_sort.end(), Comparator());
             
-            // cout << "gen4" << endl;
+            cout << "gen4" << endl;
             for (auto ord: order_sort) {
                 ord->printMapping();
             }
@@ -978,6 +1056,16 @@ class OutPortMgr
 
             // printAssign();
             // assert(0);
+        }
+        // init-genHeuristicOrder
+        void genRemainAtri(vector<int> remain_atri) {
+            assert(!order_map.empty());
+            for (size_t gid = 0; gid < gptr->size(); ++gid) {
+                assert(remain_atri[gid] > 0);
+                for (size_t fid = 0; fid < fptr->size(); ++fid) {
+                    order_map[gid][fid].setRemainAtri(remain_atri[gid]);
+                }
+            }
         }
         // init-genHeuristicOrder
         void grouping(grpChoice choice) {
@@ -1037,23 +1125,10 @@ class OutPortMgr
             if (!buf_order_ptr->isSameGrp(num_constraint)) return 0;
 
             // eq2
-            // size_t feq_cnt = 1;
-            // int f_view = feq_map[fp.first];
-            // while (f_view != fp.first) {
-            //     ++feq_cnt;
-            //     f_view = feq_map[f_view];
-            // }
-            // size_t geq_cnt = 1;
-            // int g_view = geq_map[gp.first];
-            // while (g_view != gp.first) {
-            //     ++geq_cnt;
-            //     g_view = geq_map[g_view];
-            // }
-            // if (is_one_to_one && geq_cnt > feq_cnt) {
-            //     cout << fp.first << "<-" << gp.first << "fail" << endl;
-            //     cout << feq_cnt << " " << geq_cnt << endl;
-            //     return 0;
-            // }
+            vector<size_t> f_grp = getEqGrp(fp.first, false);
+            vector<size_t> g_grp = getEqGrp(gp.first, true);
+            if (is_one_to_one && g_grp.size() > f_grp.size()) return 0;
+
 
             return buf_order_ptr;
         }
@@ -1061,17 +1136,7 @@ class OutPortMgr
         void forbidOrder(size_t gid, size_t fid) {
             int now_gid = gid;
             int now_fid = fid;
-            assign_current->updateForbidOrder(&(order_map[now_gid][now_fid]));
-            
-            // eq3
-            // now_gid = geq_map[gid];
-            // while(now_gid != gid) {
-            //     assert(now_gid >= 0);
-            //     assert(now_fid >= 0);
-            //     assign_current->updateForbidOrder(&(order_map[now_gid][now_fid]));
-            //     now_gid = geq_map[now_gid];
-            // }
-            
+            assign_current->updateForbidOrder(&(order_map[now_gid][now_fid]));            
         }
         void noRemapRule() {
             // cout << assign_current << endl;
@@ -1146,6 +1211,27 @@ class OutPortMgr
                 for (set<int>::iterator gitr = gbusport.begin(); gitr != gbusport.end(); ++gitr) {
                     // cout << "forbid " << *fitr << " " << *gitr<< endl;
                     forbidOrder(*gitr, *fitr);
+                }
+            }
+        }
+        void allEqRule() {
+            size_t gid = assign_current->getGid();
+            size_t fid = assign_current->getFid();
+            vector<size_t> f_grp = getEqGrp(fid, false);
+            vector<size_t> g_grp = getEqGrp(gid, true);
+            for (size_t g_grp_id = 0; g_grp_id < g_grp.size(); ++g_grp_id) {
+                size_t g_eq = g_grp[g_grp_id];
+                for (size_t i = 0; i < fptr->size(); ++i) {
+                    bool is_feq = false;
+                    for (size_t f_grp_id = 0; f_grp_id < f_grp.size(); ++f_grp_id) {
+                        if (i == f_grp[f_grp_id]) {
+                            is_feq = true;
+                            break;
+                        }
+                    }
+                    if (!is_feq) {
+                        forbidOrder(g_eq, i);
+                    }
                 }
             }
         }
