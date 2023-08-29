@@ -465,6 +465,63 @@ enum coneSpan {
     fSmallC,
     ordNearC
 };
+// class Comparator {  
+//     // cmp num Support
+//     // since used in OutPortMgr, Port is stored as second of pair
+//     public:
+//         bool operator() (const Order* a, const Order* b) {
+//             // assert(a->support_span_atri >= 0);
+//             // assert(b->support_span_atri >= 0);
+//             bool span_result = span_cf(a, b);
+//             if (a->remain_atri == 1) {
+//                 if (a->remain_atri == b->remain_atri) {
+//                     if (a->support_atri == b->support_atri) {
+//                         if (a->cone_atri == b->cone_atri) {
+//                             if (a->gport_id == b->gport_id) {
+//                                 return span_cf(a, b);
+//                             } else return a->gport_id < b->gport_id;
+//                         } else return a->cone_atri < b->cone_atri;
+//                     } else return a->support_atri < b->support_atri;
+//                 } else return a->remain_atri < b->remain_atri;
+//             } else {
+//                 if (a->support_atri == b->support_atri) {
+//                     if (a->cone_atri == b->cone_atri) {
+//                         if (a->remain_atri == b->remain_atri) {
+//                             if (a->gport_id == b->gport_id) {
+//                                 return span_cf(a, b);
+//                             } else return a->gport_id < b->gport_id;
+//                         } else return a->remain_atri < b->remain_atri;
+//                     } else return a->cone_atri < b->cone_atri;
+//                 } else return a->support_atri < b->support_atri;
+//             }
+//         }
+//         bool operator() (set<int>& a, set<int>& b) {
+//             return a.size() < b.size();
+//         }
+//         bool operator() (const pair<pair<grpChoice, size_t>, Port>& a, const pair<pair<grpChoice, size_t>, Port>& b) {
+//             assert(a.first.first == b.first.first);
+//             if (a.first.first == grpChoice::Support) return a.second.nofSupport() > b.second.nofSupport();
+//             else if (a.first.first == grpChoice::Cone) return a.second.getCoverage() > b.second.getCoverage();
+//             cerr << "no such compare" << endl;
+//             assert(0);
+//         }
+//     private:
+//         bool complexity(const Order* a, const Order* b) {
+//             if (a->support_atri == b->support_atri) {
+//                 if (a->cone_atri == b->cone_atri) {
+//                     return false;
+//                 } else return a->cone_atri < b->cone_atri;
+//             } else return a->support_atri < b->support_atri;
+//         }
+//         bool span_cf(const Order* a, const Order* b) {
+//             if (a->support_span_atri == b->support_span_atri) {
+//                 if (a->cone_span_atri == b->cone_span_atri) {
+//                     return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
+//                 } else return a->cone_span_atri < b->cone_span_atri;
+//             } else return a->support_span_atri < b->support_span_atri;
+//         }
+// };
+
 class Comparator {  
     // cmp num Support
     // since used in OutPortMgr, Port is stored as second of pair
@@ -472,28 +529,17 @@ class Comparator {
         bool operator() (const Order* a, const Order* b) {
             // assert(a->support_span_atri >= 0);
             // assert(b->support_span_atri >= 0);
-            bool span_result = span_cf(a, b);
-            if (a->remain_atri == 1) {
-                if (a->remain_atri == b->remain_atri) {
-                    if (a->support_atri == b->support_atri) {
-                        if (a->cone_atri == b->cone_atri) {
-                            if (a->gport_id == b->gport_id) {
-                                return span_cf(a, b);
-                            } else return a->gport_id < b->gport_id;
-                        } else return a->cone_atri < b->cone_atri;
-                    } else return a->support_atri < b->support_atri;
-                } else return a->remain_atri < b->remain_atri;
-            } else {
-                if (a->support_atri == b->support_atri) {
-                    if (a->cone_atri == b->cone_atri) {
-                        if (a->remain_atri == b->remain_atri) {
-                            if (a->gport_id == b->gport_id) {
-                                return span_cf(a, b);
-                            } else return a->gport_id < b->gport_id;
-                        } else return a->remain_atri < b->remain_atri;
-                    } else return a->cone_atri < b->cone_atri;
-                } else return a->support_atri < b->support_atri;
-            }
+            if (a->support_atri == b->support_atri) {
+                if (a->cone_atri == b->cone_atri) {
+                    if (a->gport_id == b->gport_id) {
+                        if (a->support_span_atri == b->support_span_atri) {
+                            if (a->cone_span_atri == b->cone_span_atri) {
+                                return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
+                            } else return a->cone_span_atri < b->cone_span_atri;
+                        } else return a->support_span_atri < b->support_span_atri;
+                    } else return a->gport_id < b->gport_id;
+                } else return a->cone_atri < b->cone_atri;
+            } else return a->support_atri < b->support_atri;
         }
         bool operator() (set<int>& a, set<int>& b) {
             return a.size() < b.size();
@@ -505,22 +551,8 @@ class Comparator {
             cerr << "no such compare" << endl;
             assert(0);
         }
-    private:
-        bool complexity(const Order* a, const Order* b) {
-            if (a->support_atri == b->support_atri) {
-                if (a->cone_atri == b->cone_atri) {
-                    return false;
-                } else return a->cone_atri < b->cone_atri;
-            } else return a->support_atri < b->support_atri;
-        }
-        bool span_cf(const Order* a, const Order* b) {
-            if (a->support_span_atri == b->support_span_atri) {
-                if (a->cone_span_atri == b->cone_span_atri) {
-                    return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
-                } else return a->cone_span_atri < b->cone_span_atri;
-            } else return a->support_span_atri < b->support_span_atri;
-        }
 };
+
 
 typedef vector<set<int>> Buses;
 class OutPortMgr
