@@ -576,7 +576,7 @@ void BMatchSolver::run() {
         
         outputPairs = outMgr.getAllAssign();
         // cout << "assignment: " << endl;
-        // outMgr.printAssign();
+        outMgr.printAssign();
         // for (auto assign: outputPairs) {
         //     assign->printMapping();
         // }
