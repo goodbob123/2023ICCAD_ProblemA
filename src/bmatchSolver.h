@@ -1211,6 +1211,8 @@ class BMatchSolver {
 
     bool checkPossibleMi();
     bool checkPossibleMo();
+    void findAllInputCandidate();
+    
     // SAT Solver
     SatSolver matrixSolver, miterSolver;
     SatSolver outputSolver;

@@ -538,6 +538,8 @@ void BMatchSolver::run() {
             cout << "This must be the OPT with (#output_port(Circuit I) + "
                     "#output_port(Circuit II)) = "
                  << bestScore << endl;
+            // find other input match
+            // findAllInputCandidate();
             break;
         }
 
@@ -1115,6 +1117,13 @@ void BMatchSolver::genMiterConstraint() {
         lits.push_back(Lit(q));  // q means real no match
     }
     miterSolver.addCNF(lits);
+
+    // one hot constraints
+    // vector<Lit> oneHot;
+    // for (int i = 0; i < x.size(); ++i) {
+    //     oneHot.push_back(Lit(x[i].getVar()));
+    // }
+    // miterSolver.addOneHot(oneHot);
 }
 
 bool BMatchSolver::outputSolve(vector<Var>& outputPairs) {
@@ -1196,15 +1205,6 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
         if (!supportInput_x.count(i)) redundantInput_x.push_back(i);
     for (int i = 0; i < y.size(); ++i)
         if (!supportInput_y.count(i)) redundantInput_y.push_back(i);
-    // cout << endl;
-    // cout << "redundantInput_x: ";
-    // for (const auto& s : redundantInput_x) cout << s << " ";
-    // cout << endl;
-    // cout << "redundantInput_y: ";
-    // for (const auto& s : redundantInput_y) cout << s << " ";
-    // cout << endl;
-    //*/
-
     for (int i = 0; i < redundantInput_y.size(); ++i) {
         if (redundantInput_x.size() <= i) {
             matrixSolver.assumeProperty(a[redundantInput_y[i]][x.size()].matrixVar,
@@ -1263,22 +1263,12 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
                 }
             }
         }
-        // for (int i = 0; i < redundantInput_y.size(); ++i) {
-        //     if (redundantInput_x.size() <= i) {
-        //         miterSolver.assumeProperty(a[redundantInput_y[i]][x.size()].miterVar,
-        //                                    true);
-        //     } else {
-        //         miterSolver.assumeProperty(a[redundantInput_y[i]][redundantInput_x[i]].miterVar,
-        //                                    true);
-        //     }
-        // }
         for (int j = 0; j < redundantInput_x.size(); ++j) {
             miterSolver.assumeProperty(x[redundantInput_x[j]].getVar(), false);
         }
         for (int i = 0; i < redundantInput_y.size(); ++i) {
             miterSolver.assumeProperty(y[redundantInput_y[i]].getVar(), false);
         }
-
         if (miterSolve()) {  // UNSAT -> find a valid mapping
             // Update current answer and block answer
             return true;
@@ -1289,6 +1279,8 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
 }
 
 bool BMatchSolver::miterSolve() {
+    // cout << endl;
+    // cout << "enter miter..." << endl;
     bool miterResult = miterSolver.assumpSolve();
     if (!miterResult) {
         // UNSAT => find a valid mapping
@@ -1319,15 +1311,32 @@ bool BMatchSolver::miterSolve() {
             }
             // cout << endl;
         }
+
+        // ensure the same mapping pair do not check by miter again
+        // vector<Lit> lits;
+        // for (int i = 0; i < fStar.size(); ++i) {
+        //     for (int j = 0; j < f.size(); ++j) {
+        //         if (ans_c[i][j] == 1) lits.push_back(~Lit(c[i][j].miterVar));
+        //         if (ans_d[i][j] == 1) lits.push_back(~Lit(d[i][j].miterVar));
+        //         for (int k = 0; i < y.size(); ++k) {
+        //             if (!g[i].isSupport(k)) continue;
+        //             for (int l = 0; l < x.size() + 1; ++l) {
+        //                 if (!f[j].isSupport(l)) continue;
+        //                 lits.push_back(ans_a[k][l] ? ~Lit(a[k][l].miterVar) : Lit(a[k][l].miterVar));
+        //                 lits.push_back(ans_b[k][l] ? ~Lit(b[k][l].miterVar) : Lit(b[k][l].miterVar));
+        //             }
+        //         }
+        //     }
+        // }
         outputSolver.addCNF(lits);
         int score = getScore();
         if (score > bestScore) {
+            bestScore = score;
             outputAns();
             finalCheck();
-            bestScore = score;
         }
         cout << "Score: " << score << ", Best Score: " << bestScore << endl;
-
+        // cout << "  leave miter..." << endl;
         return true;
     } else {
         // SAT =>
@@ -1383,6 +1392,7 @@ bool BMatchSolver::miterSolve() {
             }
         }
     }
+    // cout << "  leave miter..." << endl;
     return false;
 }
 
@@ -1887,5 +1897,99 @@ void BMatchSolver::printGateInfo(unordered_map<string, vector<string>>& map_1, u
         printGateInfoHelper(map_2, c2->getIOName(c2->POs[i]), gateCount);
         for (size_t j = 0; j < 8; ++j) cout << setw(6) << gateCount[j] << " ";
         cout << endl;
+    }
+}
+
+// when find best output pair, start to find all candidates of input matching
+void BMatchSolver::findAllInputCandidate() {
+    // block current Input matrix
+    vector<Lit> lits;
+    for (int i = 0; i < fStar.size(); ++i) {
+        for (int j = 0; j < f.size(); ++j) {
+            // cout << matrixSolver.getValue(c[i][j].matrixVar) << " ";
+            // cout << matrixSolver.getValue(d[i][j].matrixVar) << " ";
+            ans_a[i][j] = matrixSolver.getValue(a[i][j].matrixVar);
+            ans_b[i][j] = matrixSolver.getValue(b[i][j].matrixVar);
+            lits.push_back(ans_a[i][j] ? ~Lit(a[i][j].matrixVar) : Lit(a[i][j].matrixVar));
+            lits.push_back(ans_b[i][j] ? ~Lit(b[i][j].matrixVar) : Lit(b[i][j].matrixVar));
+        }
+    }
+    matrixSolver.addCNF(lits);
+
+    // get input matrix
+    matrixSolver.assumeRelease();
+    vector<int> current_f, current_g;
+    for (int i = 0; i < fStar.size(); ++i) {
+        for (int j = 0; j < f.size(); ++j) {
+            matrixSolver.assumeProperty(c[i][j].matrixVar, ans_c[i][j]);
+            matrixSolver.assumeProperty(d[i][j].matrixVar, ans_d[i][j]);
+        }
+    }
+    int candidateCount = 0;
+    while (1) {
+        cerr << "while HEAD" << endl;
+        bool inputResult = matrixSolver.assumpSolve();
+        cerr << "assumpSolve" << endl;
+        if (!inputResult) {
+            cout << "total input candidate : " << candidateCount << endl;
+            cout << "cannot find other input mapping" << endl;
+            return;
+        }
+        cerr << "1";
+        // Assume to miterSolver and solve
+        // Assume input mapping
+        miterSolver.assumeRelease();
+        for (int i = 0; i < y.size(); ++i) {
+            for (int j = 0; j < x.size() + 1; ++j) {
+                int matrixVarValue = matrixSolver.getValue(a[i][j].matrixVar);
+                if (matrixVarValue != -1) {  // -1 means unknown
+                    miterSolver.assumeProperty(a[i][j].miterVar,
+                                               matrixVarValue);
+                }
+                matrixVarValue = matrixSolver.getValue(b[i][j].matrixVar);
+                if (matrixVarValue != -1) {  // -1 means unknown
+                    miterSolver.assumeProperty(b[i][j].miterVar,
+                                               matrixVarValue);
+                }
+            }
+        }
+        cerr << "2";
+        // Assume output mapping
+        for (int i = 0; i < fStar.size(); ++i) {
+            for (int j = 0; j < f.size(); ++j) {
+                int matrixVarValue = matrixSolver.getValue(c[i][j].matrixVar);
+                if (matrixVarValue != -1) {  // -1 means unknown
+                    miterSolver.assumeProperty(c[i][j].miterVar,
+                                               matrixVarValue);
+                }
+                matrixVarValue = matrixSolver.getValue(d[i][j].matrixVar);
+                if (matrixVarValue != -1) {  // -1 means unknown
+                    miterSolver.assumeProperty(d[i][j].miterVar,
+                                               matrixVarValue);
+                }
+            }
+        }
+        cerr << "3" << endl;
+        cerr << "START miter..." << endl;
+        if (miterSolve()) {  // UNSAT -> find a valid mapping
+            // Update current answer and block answer
+            ++candidateCount;
+            cout << "candidateCount : " << candidateCount << endl;
+            // block current Input matrix
+            vector<Lit> lits;
+            for (int i = 0; i < fStar.size(); ++i) {
+                for (int j = 0; j < f.size(); ++j) {
+                    // cout << matrixSolver.getValue(c[i][j].matrixVar) << " ";
+                    // cout << matrixSolver.getValue(d[i][j].matrixVar) << " ";
+                    ans_a[i][j] = matrixSolver.getValue(a[i][j].matrixVar);
+                    ans_b[i][j] = matrixSolver.getValue(b[i][j].matrixVar);
+                    lits.push_back(ans_a[i][j] ? ~Lit(a[i][j].matrixVar) : Lit(a[i][j].matrixVar));
+                    lits.push_back(ans_b[i][j] ? ~Lit(b[i][j].matrixVar) : Lit(b[i][j].matrixVar));
+                }
+            }
+            matrixSolver.addCNF(lits);
+        } else {
+            cout << "not input candidate" << endl;
+        }
     }
 }

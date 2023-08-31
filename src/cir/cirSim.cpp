@@ -6,6 +6,9 @@
   Copyright    [ Copyleft(c) 2008-present LaDs(III), GIEE, NTU, Taiwan ]
 ****************************************************************************/
 
+#include <stdlib.h>
+#include <time.h>
+
 #include <algorithm>
 #include <bitset>
 #include <cassert>
@@ -303,10 +306,20 @@ void CirMgr::findNecessary(CirGate* g, set<int>& set, int& patternShift) {
 
         assert(!(fanin1Value && fanin0Value));
 
-        if (fanin0Value == 0) {
+        if ((!fanin0Value) && (!fanin1Value)) {
+            random_device rd;
+            mt19937 gen(rd());
+            uniform_int_distribution<> distrib(0, 1);
+            int randomValue = distrib(gen);
+            if (randomValue == 0) {
+                findNecessary(all[g->fanin0id], set, patternShift);
+            } else
+                // randomValue == 1
+                findNecessary(all[g->fanin1id], set, patternShift);
+        }
+        else if (fanin0Value == 0) {
             findNecessary(all[g->fanin0id], set, patternShift);
         } else {
-            // if (fanin1Value == 0) {
             findNecessary(all[g->fanin1id], set, patternShift);
         }
     }
