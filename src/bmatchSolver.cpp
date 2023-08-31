@@ -488,7 +488,7 @@ void BMatchSolver::setOutMgr() {
     assert(y.size() >= x.size());
     cout << y.size() << " " << x.size() << endl;
     outMgr.setAssumption(true, true);
-    outMgr.setAtriType(supportSpan::fSmallS, coneSpan::AbsC);
+    outMgr.setAtriType(supportSpan::ordNearS, coneSpan::AbsC);
     outMgr.setStepWay(stepWay::normal);
     outMgr.setInputBias(y.size() - x.size());
     if (!outMgr.init()) {
@@ -523,6 +523,8 @@ void BMatchSolver::run() {
     //     for (auto v: cv) cout << v.matrixVar << " ";
     //     cout << endl;
     // }
+    vector<vector<bool>> negation(1, vector<bool>());
+
     while (1) {
         int execTime = (clock() - START) / CLOCKS_PER_SEC;
         if (execTime - prevTime >= 10) {
@@ -555,11 +557,15 @@ void BMatchSolver::run() {
             cur = outMgr.step();
             if (cur!= 0 && outMgr.isBacktrack()) {
                 cur = outMgr.step();
+                negation.clear();
+                negation.push_back(vector<bool>());
                 assert(!outMgr.isBacktrack());
             }
         } 
         else {
             cur = outMgr.backTrack();
+            negation.clear();
+            negation.push_back(vector<bool>());
             if (cur != 0) {
                 cur = outMgr.step();
                 assert(!outMgr.isBacktrack());
@@ -579,9 +585,12 @@ void BMatchSolver::run() {
         // outMgr.printBusConnection();
         // cout << "__________" << endl;
         // cout << "r1" << endl;
+        assert(negation.size() > 0);
 
-        vector<vector<bool>> negation(1, vector<bool>());
-        for (size_t i = 0; i < outputPairs.size(); ++i) {
+        size_t start;
+        if (negation.size() == 1 && negation[0].empty()) start = 0;
+        else start = outputPairs.size() - 1;
+        for (size_t i = start; i < outputPairs.size(); ++i) {
             if (outputPairs[i]->isPos() && outputPairs[i]->isNeg()) {
                 size_t num = negation.size();
                 // negation.insert(negation.end(), negation.begin(), negation.end());
@@ -594,20 +603,8 @@ void BMatchSolver::run() {
                 for (size_t j = 0; j < negation.size(); ++j) negation[j].push_back(true);
             else
                 assert(0);
-
-            // for (auto vec: negation) {
-            //     for (auto n: vec) cout << n << " ";
-            //     cout << endl;
-            // }
             if (negation.size() > 50) negation.resize(50);
         }
-        // cout << "r2" << endl;
-
-        // for (auto vec: negation) {
-        //     for (auto n: vec) cout << n << " ";
-        //     cout << endl;
-        // }
-        // cout << "\\|/" << endl;
 
         size_t validSolNum = 0;
         for (size_t i = 0; i < negation.size(); ++i) {
@@ -1333,7 +1330,7 @@ bool BMatchSolver::miterSolve() {
         if (score > bestScore) {
             bestScore = score;
             outputAns();
-            finalCheck();
+            // finalCheck();
         }
         cout << "Score: " << score << ", Best Score: " << bestScore << endl;
         // cout << "  leave miter..." << endl;
