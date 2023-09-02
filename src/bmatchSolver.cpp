@@ -489,7 +489,7 @@ void BMatchSolver::setOutMgr() {
     cout << y.size() << " " << x.size() << endl;
     outMgr.setAssumption(true, true);
     outMgr.setAtriType(supportSpan::ordNearS, coneSpan::AbsC);
-    outMgr.setStepWay(stepWay::normal);
+    outMgr.setStepWay(stepWay::noFullMarkThenSkip);
     outMgr.setInputBias(y.size() - x.size());
     if (!outMgr.init()) {
         cerr << "outMgr not correctly set" << endl;
@@ -576,10 +576,11 @@ void BMatchSolver::run() {
         
         outputPairs = outMgr.getAllAssign();
         // cout << "assignment: " << endl;
-        outMgr.printAssign();
+        // outMgr.printAssign();
         // for (auto assign: outputPairs) {
         //     assign->printMapping();
         // }
+        outputPairs.back()->printMapping();
         // outMgr.printBusConnection();
         // cout << "__________" << endl;
         // cout << "r1" << endl;

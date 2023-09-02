@@ -240,20 +240,43 @@ class Order
         bool isConnectBus() const { return is_connect_bus; }
         BusInfo* getFBusptr() const { return fBus_ptr; }
         BusInfo* getGBusptr() const { return gBus_ptr; }
+
         bool isSameGrp(size_t numConstraint) const { return (grp == numConstraint); }
-
         size_t getBackCnt() { return back_cnt; }
-        void resetBackCnt() { back_cnt = 0; }
+        vector<size_t> getRecord() {
+            vector<size_t> record;
+            record.push_back(high_score_atri);
+            record.push_back(access_time_atri);
+            record.push_back(success_time_atri);
+            record.push_back(max_back_cnt_atri);
+            record.push_back(conflict_cnt_atri);
+            return record;
+        }
 
+        void resetBackCnt() { back_cnt = 0; }
         void sameGrp() { ++grp; }
         void setRemainAtri(int remain) { remain_atri = remain; }
         void setConeSpan(int coneSpan) { cone_span_atri = coneSpan; }
         void setSupportSpan(int supportSpan) { support_span_atri = supportSpan; }
-        void setHighScore(size_t highScore) { high_score_atri = highScore; }
-        void setAccessTime(size_t accessTime) { access_time_atri = accessTime; }
-        void setSuccessTime(size_t successTime) { success_time_atri = successTime; }
-        void setMaxBackCnt(size_t maxBackCnt) { max_back_cnt_atri = maxBackCnt; }
-        void setConflictCnt(size_t conflictCnt) { conflict_cnt_atri = conflictCnt; }
+        void setRecord(vector<size_t > record) {
+            assert(record.size() == 5);
+            high_score_atri = record[0];
+            access_time_atri = record[1];
+            success_time_atri = record[2];
+            max_back_cnt_atri = record[3];
+            conflict_cnt_atri = record[4];
+        }
+        void updateScore(size_t score) {
+            ++access_time_atri;
+            if (score != 0) {
+                ++success_time_atri;
+                if (score > high_score_atri) high_score_atri = score;
+            } 
+        }
+        void noFull() {
+            ++conflict_cnt_atri;
+        }
+        
         
         void enable(Order* _order_nxt) {
             // make the Order able to assign and unsign
@@ -465,63 +488,6 @@ enum coneSpan {
     fSmallC,
     ordNearC
 };
-// class Comparator {  
-//     // cmp num Support
-//     // since used in OutPortMgr, Port is stored as second of pair
-//     public:
-//         bool operator() (const Order* a, const Order* b) {
-//             // assert(a->support_span_atri >= 0);
-//             // assert(b->support_span_atri >= 0);
-//             bool span_result = span_cf(a, b);
-//             if (a->remain_atri == 1) {
-//                 if (a->remain_atri == b->remain_atri) {
-//                     if (a->support_atri == b->support_atri) {
-//                         if (a->cone_atri == b->cone_atri) {
-//                             if (a->gport_id == b->gport_id) {
-//                                 return span_cf(a, b);
-//                             } else return a->gport_id < b->gport_id;
-//                         } else return a->cone_atri < b->cone_atri;
-//                     } else return a->support_atri < b->support_atri;
-//                 } else return a->remain_atri < b->remain_atri;
-//             } else {
-//                 if (a->support_atri == b->support_atri) {
-//                     if (a->cone_atri == b->cone_atri) {
-//                         if (a->remain_atri == b->remain_atri) {
-//                             if (a->gport_id == b->gport_id) {
-//                                 return span_cf(a, b);
-//                             } else return a->gport_id < b->gport_id;
-//                         } else return a->remain_atri < b->remain_atri;
-//                     } else return a->cone_atri < b->cone_atri;
-//                 } else return a->support_atri < b->support_atri;
-//             }
-//         }
-//         bool operator() (set<int>& a, set<int>& b) {
-//             return a.size() < b.size();
-//         }
-//         bool operator() (const pair<pair<grpChoice, size_t>, Port>& a, const pair<pair<grpChoice, size_t>, Port>& b) {
-//             assert(a.first.first == b.first.first);
-//             if (a.first.first == grpChoice::Support) return a.second.nofSupport() > b.second.nofSupport();
-//             else if (a.first.first == grpChoice::Cone) return a.second.getCoverage() > b.second.getCoverage();
-//             cerr << "no such compare" << endl;
-//             assert(0);
-//         }
-//     private:
-//         bool complexity(const Order* a, const Order* b) {
-//             if (a->support_atri == b->support_atri) {
-//                 if (a->cone_atri == b->cone_atri) {
-//                     return false;
-//                 } else return a->cone_atri < b->cone_atri;
-//             } else return a->support_atri < b->support_atri;
-//         }
-//         bool span_cf(const Order* a, const Order* b) {
-//             if (a->support_span_atri == b->support_span_atri) {
-//                 if (a->cone_span_atri == b->cone_span_atri) {
-//                     return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
-//                 } else return a->cone_span_atri < b->cone_span_atri;
-//             } else return a->support_span_atri < b->support_span_atri;
-//         }
-// };
-
 class Comparator {  
     // cmp num Support
     // since used in OutPortMgr, Port is stored as second of pair
@@ -529,15 +495,36 @@ class Comparator {
         bool operator() (const Order* a, const Order* b) {
             // assert(a->support_span_atri >= 0);
             // assert(b->support_span_atri >= 0);
+            bool span_result = span_cf(a, b);
+            // if (a->remain_atri == 1) {
+            //     if (a->remain_atri == b->remain_atri) {
+            //         if (a->support_atri == b->support_atri) {
+            //             if (a->cone_atri == b->cone_atri) {
+            //                 if (a->gport_id == b->gport_id) {
+            //                     return span_cf(a, b);
+            //                 } else return a->gport_id < b->gport_id;
+            //             } else return a->cone_atri < b->cone_atri;
+            //         } else return a->support_atri < b->support_atri;
+            //     } else return a->remain_atri < b->remain_atri;
+            // } else {
+            //     if (a->support_atri == b->support_atri) {
+            //         if (a->cone_atri == b->cone_atri) {
+            //             if (a->remain_atri == b->remain_atri) {
+            //                 if (a->gport_id == b->gport_id) {
+            //                     return span_cf(a, b);
+            //                 } else return a->gport_id < b->gport_id;
+            //             } else return a->remain_atri < b->remain_atri;
+            //         } else return a->cone_atri < b->cone_atri;
+            //     } else return a->support_atri < b->support_atri;
+            // }
+
             if (a->support_atri == b->support_atri) {
                 if (a->cone_atri == b->cone_atri) {
-                    if (a->gport_id == b->gport_id) {
-                        if (a->support_span_atri == b->support_span_atri) {
-                            if (a->cone_span_atri == b->cone_span_atri) {
-                                return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
-                            } else return a->cone_span_atri < b->cone_span_atri;
-                        } else return a->support_span_atri < b->support_span_atri;
-                    } else return a->gport_id < b->gport_id;
+                    if (a->remain_atri == b->remain_atri) {
+                        if (a->gport_id == b->gport_id) {
+                            return span_cf(a, b);
+                        } else return a->gport_id < b->gport_id;
+                    } else return a->remain_atri < b->remain_atri;
                 } else return a->cone_atri < b->cone_atri;
             } else return a->support_atri < b->support_atri;
         }
@@ -551,7 +538,53 @@ class Comparator {
             cerr << "no such compare" << endl;
             assert(0);
         }
+    private:
+        bool complexity(const Order* a, const Order* b) {
+            if (a->support_atri == b->support_atri) {
+                if (a->cone_atri == b->cone_atri) {
+                    return false;
+                } else return a->cone_atri < b->cone_atri;
+            } else return a->support_atri < b->support_atri;
+        }
+        bool span_cf(const Order* a, const Order* b) {
+            if (a->support_span_atri == b->support_span_atri) {
+                if (a->cone_span_atri == b->cone_span_atri) {
+                    return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
+                } else return a->cone_span_atri < b->cone_span_atri;
+            } else return a->support_span_atri < b->support_span_atri;
+        }
 };
+
+//class Comparator {  
+//    // cmp num Support
+//    // since used in OutPortMgr, Port is stored as second of pair
+//    public:
+//        bool operator() (const Order* a, const Order* b) {
+//            // assert(a->support_span_atri >= 0);
+//            // assert(b->support_span_atri >= 0);
+//            if (a->support_atri == b->support_atri) {
+//                if (a->cone_atri == b->cone_atri) {
+//                    if (a->gport_id == b->gport_id) {
+//                        if (a->support_span_atri == b->support_span_atri) {
+//                            if (a->cone_span_atri == b->cone_span_atri) {
+//                                return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
+//                            } else return a->cone_span_atri < b->cone_span_atri;
+//                        } else return a->support_span_atri < b->support_span_atri;
+//                    } else return a->gport_id < b->gport_id;
+//                } else return a->cone_atri < b->cone_atri;
+//            } else return a->support_atri < b->support_atri;
+//        }
+//        bool operator() (set<int>& a, set<int>& b) {
+//            return a.size() < b.size();
+//        }
+//        bool operator() (const pair<pair<grpChoice, size_t>, Port>& a, const pair<pair<grpChoice, size_t>, Port>& b) {
+//            assert(a.first.first == b.first.first);
+//            if (a.first.first == grpChoice::Support) return a.second.nofSupport() > b.second.nofSupport();
+//            else if (a.first.first == grpChoice::Cone) return a.second.getCoverage() > b.second.getCoverage();
+//            cerr << "no such compare" << endl;
+//            assert(0);
+//        }
+//};
 
 
 typedef vector<set<int>> Buses;
@@ -572,6 +605,9 @@ class OutPortMgr
             eqgrp_f = vector<vector<pair<int, bool> > > ();
             eqgrp_g = vector<vector<pair<int, bool> > > ();
             input_bias = -1;
+
+            no_full_mark_reason = vector<Order* > ();
+            map_record = vector<vector<vector<size_t> > > ();
         }
         void setPorts(vector<Port>& _f, vector<Port>& _g) {
             fptr = &_f;
@@ -648,17 +684,44 @@ class OutPortMgr
             assign_current = assign_head;
             is_backtrack = false;
 
-            cout << "Mgr2" << endl;
+            // cout << "Mgr2" << endl;
             genMaps();
-            cout << "Mgr1" << endl;
+            // cout << "Mgr1" << endl;
             genSpanAtri();
+            genRecordAtri();
             genHeuristicOrder();    // i.e. gen possible order chain
-            cout << "done outPortMgr init" << endl;
+            // cout << "done outPortMgr init" << endl;
             return true;
+        }
+        void record() {
+            if (order_map.empty()) {
+                cerr << "init first" << endl;
+                return;
+            }
+            map_record.clear();
+            for (size_t gid = 0; gid < gptr->size(); ++gid) {
+                vector<vector<size_t> > buffer;
+                for (size_t fid = 0; fid < fptr->size(); ++fid) {
+                    buffer.push_back(order_map[gid][fid].getRecord());
+                }
+                map_record.push_back(buffer);
+            }
         }
         Order* step() {
             if (assign_current->isHead()) cout << "at head" << endl; 
             size_t pre_id = assign_current->getId();    // id is index in possible assignment chain
+            noFullMarkUpdate();
+            if (step_way == stepWay::noFullMarkThenSkip || step_way == stepWay::noFullMarkAndConstSkip) {
+                if (!no_full_mark_reason.empty()) {
+                    cerr << "nfmark" << endl;
+                    backTrack();
+                    for (size_t id = 0; id < no_full_mark_reason.size(); ++id) {
+                        Order* conflict_ord = no_full_mark_reason[id];
+                        conflict_ord->noFull();
+                    }
+                    return assign_current;
+                }
+            }
             assign_current = assign_current->step();    // get next assignment (if backTrack, only do backTrack)
             // cout << "step1" << endl;
             size_t now_id = assign_current != 0 ? assign_current->getId() : 0; // assign_current == 0 iff no next assignment
@@ -666,7 +729,7 @@ class OutPortMgr
             if (!is_backtrack) { // not backtrack means the assign_current is new assignment's end
                 // forbid some assignments according to rules
                 assert(now_id != 0);
-                cout << "step2" << endl;
+                // cout << "step2" << endl;
                 noRemapRule();
                 unsplitBusRule();
                 allEqRule();
@@ -678,34 +741,23 @@ class OutPortMgr
             assert(assign_current != 0);
             if (assign_current->isHead()) cout << "at head" << endl;
             is_backtrack = true;
-            int nxt_g, view_g;
             size_t back_cnt;
-
-            view_g = assign_current->getGid();
 
             assign_current = assign_current->backTrack(just_back);
             if (just_back) return assign_current;
-
             if (assign_current == 0 || assign_current->isHead()) return assign_current;
 
-            if (assign_current->getAssignNxt() == 0) nxt_g = -1;
-            else nxt_g = assign_current->getAssignNxt()->getGid();
             back_cnt = assign_current->getBackCnt();
 
             while (true) {
-                cout << "in" << endl;
-                bool toBreak;
                 noFullMarkUpdate(); // todo
-                if (step_way == stepWay::constSkip) if (back_cnt < 20) break;
-                else if (step_way == stepWay::noFullMarkThenSkip) if (!no_full_mark_reason.empty()) break;
-                else if (step_way == stepWay::noFullMarkAndConstSkip) if (!no_full_mark_reason.empty() && back_cnt < 20) break;
-                else break;
+                if (step_way == stepWay::constSkip || step_way == stepWay::noFullMarkAndConstSkip) {if (back_cnt < 20) break;}
+                
+                else {break;}
 
-                view_g = assign_current->getGid();
                 assign_current = assign_current->backTrack();
                 if (assign_current == 0 || assign_current->isHead()) return assign_current;
-                if (assign_current->getAssignNxt() == 0) nxt_g = -1;
-                else nxt_g = assign_current->getAssignNxt()->getGid();
+
                 back_cnt = assign_current->getBackCnt();
             }
             return assign_current;
@@ -785,6 +837,8 @@ class OutPortMgr
         supportSpan support_span_type;
         coneSpan cone_span_type;
         stepWay step_way;
+
+        vector<vector<vector<size_t> > > map_record;
 
         vector<Port>* fptr; // copy of f
         vector<Port>* gptr; // copy of g
@@ -1017,6 +1071,20 @@ class OutPortMgr
 
         }
         // init
+        void genRecordAtri() {
+            vector<size_t> dummy(5, 0);
+            bool no_record = false;
+            if (map_record.empty()) {
+                no_record = true;
+            }
+            for (size_t gid = 0; gid < gptr->size(); ++gid) {
+                for (size_t fid = 0; fid < fptr->size(); ++fid) {
+                    if (no_record) order_map[gid][fid].setRecord(dummy);
+                    else order_map[gid][fid].setRecord(map_record[gid][fid]);
+                }
+            }
+        }
+        // init
         void genHeuristicOrder() {
 
             vector<pair<size_t, Port> > f_port;
@@ -1181,7 +1249,10 @@ class OutPortMgr
             bool canMap = false;
             view = assign_head->getOrderNxt();
             nowGid = view->getGid();
+            // cerr << "nf1" << endl;
             while(view != 0) {
+                // view->printMapping();
+                // cerr << "nf2" << endl;
                 if (nowGid != view->getGid()) {
                     if (!canMap) {
                         for (size_t fid = 0; fid < order_map[nowGid].size(); ++fid) {
@@ -1197,12 +1268,15 @@ class OutPortMgr
                     nowGid = view->getGid();
                     canMap = false;
                 }
+                // cerr << "nf3" << endl;
                 if (view->getId() <= assign_current->getId()) {
                     if (view->isAssign()) canMap = true;
                 } else {
                     if (!view->isForbid()) canMap = true;
                 }
+                // cerr << "nf4" << endl;
                 view = view->getOrderNxt();
+                // cerr << "nf5" << endl;
             }
         }
         void forbidOrder(size_t gid, size_t fid) {
@@ -1287,7 +1361,7 @@ class OutPortMgr
             }
         }
         void allEqRule() {
-            cerr << "in" << endl;
+            // cerr << "in" << endl;
             size_t gid = assign_current->getGid();
             size_t fid = assign_current->getFid();
             vector<size_t> f_grp = getEqGrp(fid, false);
