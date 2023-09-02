@@ -274,6 +274,7 @@ class Order
             } 
         }
         void noFull() {
+            cout << "in noFull" << endl;
             ++conflict_cnt_atri;
         }
         
@@ -495,34 +496,24 @@ class Comparator {
         bool operator() (const Order* a, const Order* b) {
             // assert(a->support_span_atri >= 0);
             // assert(b->support_span_atri >= 0);
-            bool span_result = span_cf(a, b);
-            // if (a->remain_atri == 1) {
-            //     if (a->remain_atri == b->remain_atri) {
-            //         if (a->support_atri == b->support_atri) {
-            //             if (a->cone_atri == b->cone_atri) {
-            //                 if (a->gport_id == b->gport_id) {
-            //                     return span_cf(a, b);
-            //                 } else return a->gport_id < b->gport_id;
-            //             } else return a->cone_atri < b->cone_atri;
-            //         } else return a->support_atri < b->support_atri;
-            //     } else return a->remain_atri < b->remain_atri;
-            // } else {
-            //     if (a->support_atri == b->support_atri) {
-            //         if (a->cone_atri == b->cone_atri) {
-            //             if (a->remain_atri == b->remain_atri) {
-            //                 if (a->gport_id == b->gport_id) {
-            //                     return span_cf(a, b);
-            //                 } else return a->gport_id < b->gport_id;
-            //             } else return a->remain_atri < b->remain_atri;
-            //         } else return a->cone_atri < b->cone_atri;
-            //     } else return a->support_atri < b->support_atri;
-            // }
 
+            bool span_result = span_cf(a, b);
+            // int complexity_result = complexity(a, b);
+            int success_result = success_rate(a, b);
+            // 
+            // float score = 0;
+            // score -= float(complexity_result)*0.005;
+            // if (span_result) score += 1;
+            // score += float(success_result);
+// 
+            // return score > 0;
             if (a->support_atri == b->support_atri) {
                 if (a->cone_atri == b->cone_atri) {
                     if (a->remain_atri == b->remain_atri) {
                         if (a->gport_id == b->gport_id) {
-                            return span_cf(a, b);
+                            if (success_result == 0) {
+                                return span_result;
+                            } else return success_result == 1;
                         } else return a->gport_id < b->gport_id;
                     } else return a->remain_atri < b->remain_atri;
                 } else return a->cone_atri < b->cone_atri;
@@ -539,12 +530,9 @@ class Comparator {
             assert(0);
         }
     private:
-        bool complexity(const Order* a, const Order* b) {
-            if (a->support_atri == b->support_atri) {
-                if (a->cone_atri == b->cone_atri) {
-                    return false;
-                } else return a->cone_atri < b->cone_atri;
-            } else return a->support_atri < b->support_atri;
+        int complexity(const Order* a, const Order* b) {
+            int coef = 10;
+            return coef*(a->support_atri - b->support_atri)+(a->cone_atri - b->cone_atri);
         }
         bool span_cf(const Order* a, const Order* b) {
             if (a->support_span_atri == b->support_span_atri) {
@@ -552,6 +540,23 @@ class Comparator {
                     return a->bus_atri && !b->bus_atri; // Comparator() (a, a) should be false
                 } else return a->cone_span_atri < b->cone_span_atri;
             } else return a->support_span_atri < b->support_span_atri;
+        }
+        int success_rate(const Order* a, const Order* b) {
+            const int enough_test = 30;
+            const float suc_rate_th = 0.2;
+            const int access_time_th = 10;
+            if ((a->access_time_atri > enough_test) && (b->access_time_atri > enough_test)) {
+                float suc_r_span = float(a->success_time_atri)/float(a->access_time_atri) - float(b->success_time_atri)/float(b->access_time_atri);
+                if (suc_r_span > suc_rate_th) return 1;
+                else if (suc_r_span < suc_rate_th) return -1;
+                else return 0; 
+            }
+            else {
+                int acc_r_span = b->access_time_atri - a->access_time_atri;
+                if (acc_r_span > access_time_th) return 1;
+                else if (acc_r_span < access_time_th) return -1;
+                else return 0;
+            }
         }
 };
 
@@ -597,6 +602,7 @@ class OutPortMgr
             support_span_type = supportSpan::fBigS;
             cone_span_type = coneSpan::AbsC;
             step_way = stepWay::normal;
+            had_set = false;
 
             fptr = 0;
             gptr = 0;
@@ -655,14 +661,18 @@ class OutPortMgr
             return true;
         }
         bool init() {
+            cout << "in init" << endl;
+            had_set = true;
             if (!checkSetting()) return false;
 
             is_one_to_one = is_one_to_one && (fptr->size() == gptr->size());
 
             Buses fBusBuf = *fBusptr;
             Buses gBusBuf = *gBusptr;
+            cout << "Mgr6" << endl;
             sort(fBusBuf.begin(), fBusBuf.end(), Comparator());
             sort(gBusBuf.begin(), gBusBuf.end(), Comparator());
+            cout << "Mgr7" << endl;
             is_bus_one_to_one = is_bus_one_to_one && (fBusBuf.size() == gBusBuf.size()) && is_one_to_one;
             if (is_bus_one_to_one) {
                 for (size_t i = 0; i < fBusBuf.size(); ++i) {
@@ -672,7 +682,7 @@ class OutPortMgr
                     }
                 }
             }
-
+            cout << "Mgr8" << endl;
             order_map = vector<vector<Order> > ();
             fbus_map = vector<BusInfo* > ();
             gbus_map = vector<BusInfo* > ();
@@ -684,12 +694,15 @@ class OutPortMgr
             assign_current = assign_head;
             is_backtrack = false;
 
-            // cout << "Mgr2" << endl;
+            cout << "Mgr2" << endl;
             genMaps();
-            // cout << "Mgr1" << endl;
+            cout << "Mgr1" << endl;
             genSpanAtri();
+            cout << "Mgr3" << endl;
             genRecordAtri();
+            cout << "Mgr4" << endl;
             genHeuristicOrder();    // i.e. gen possible order chain
+            cout << "Mgr5" << endl;
             // cout << "done outPortMgr init" << endl;
             return true;
         }
@@ -700,12 +713,34 @@ class OutPortMgr
             }
             map_record.clear();
             for (size_t gid = 0; gid < gptr->size(); ++gid) {
+                // cerr << "re1";
                 vector<vector<size_t> > buffer;
                 for (size_t fid = 0; fid < fptr->size(); ++fid) {
+                    // cerr << "re2";
                     buffer.push_back(order_map[gid][fid].getRecord());
+                    // for (auto c: order_map[gid][fid].getRecord()) {
+                    //     if (c != 0) {
+                    //         cout << "we record!" << endl;
+                    //         int dum;
+                    //         cin >> dum;
+                    //     }
+                    // }
                 }
+                // cerr << "re3";
                 map_record.push_back(buffer);
             }
+            // for (auto a: map_record) {
+            //     for (auto b: a) {
+            //         for (auto c: b) {
+            //             if (c != 0) {
+            //                 cout << "truely recorded" << endl;
+            //                 int dum;
+            //                 cin >> dum;
+            //                 return;
+            //             }
+            //         }
+            //     }
+            // }
         }
         Order* step() {
             if (assign_current->isHead()) cout << "at head" << endl; 
@@ -765,6 +800,7 @@ class OutPortMgr
         Order* getHead() { return assign_head; }
         Order* getAssign() { return assign_current; }
         bool isBacktrack() { return is_backtrack; }
+        bool hadSet() {return had_set; }
         vector<Order*> getAllAssign() const {
             // return Orders in current assignments
             vector<Order*> assignment;
@@ -834,6 +870,7 @@ class OutPortMgr
     private:
         bool is_one_to_one; // do we assume output is one to one
         bool is_bus_one_to_one;
+        bool had_set;
         supportSpan support_span_type;
         coneSpan cone_span_type;
         stepWay step_way;
@@ -1083,6 +1120,15 @@ class OutPortMgr
                     else order_map[gid][fid].setRecord(map_record[gid][fid]);
                 }
             }
+            // for (auto vec:order_map) {
+            //     for (auto v: vec) {
+            //         for (auto i: v.getRecord()) {
+            //             if (i != 0) cout << "dif" << endl;
+            //         }
+            //     }
+            // }
+            // int duy;
+            // cin >> duy;
         }
         // init
         void genHeuristicOrder() {

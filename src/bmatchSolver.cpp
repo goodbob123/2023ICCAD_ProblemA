@@ -476,21 +476,25 @@ void BMatchSolver::outputPreprocess() {
     cerr << "outputPreprocess end" << endl;
 }
 void BMatchSolver::setOutMgr() {
-    outMgr.setPorts(f, g);
-    outMgr.setBuses(fBus, gBus);
-    vector<vector<pair<int, bool> > > eqgrp_f, eqgrp_g;
-    getEqualGroup(eqgrp_f, eqgrp_g);
-    for (auto grp: eqgrp_g) {
-        for (auto g: grp) cout << g.first << " ";
-        cout << endl;
+    if (!outMgr.hadSet()) {
+        outMgr.setPorts(f, g);
+        outMgr.setBuses(fBus, gBus);
+        vector<vector<pair<int, bool> > > eqgrp_f, eqgrp_g;
+        cout << "set1" << endl;
+        getEqualGroup(eqgrp_f, eqgrp_g);
+        for (auto grp: eqgrp_g) {
+            for (auto g: grp) cout << g.first << " ";
+            cout << endl;
+        }
+        outMgr.setEqInfo(eqgrp_f, eqgrp_g);
+        assert(y.size() >= x.size());
+        cout << y.size() << " " << x.size() << endl;
+        outMgr.setInputBias(y.size() - x.size());
     }
-    outMgr.setEqInfo(eqgrp_f, eqgrp_g);
-    assert(y.size() >= x.size());
-    cout << y.size() << " " << x.size() << endl;
     outMgr.setAssumption(true, true);
     outMgr.setAtriType(supportSpan::ordNearS, coneSpan::AbsC);
-    outMgr.setStepWay(stepWay::noFullMarkThenSkip);
-    outMgr.setInputBias(y.size() - x.size());
+    outMgr.setStepWay(stepWay::normal);
+    cout << "set2" << endl;
     if (!outMgr.init()) {
         cerr << "outMgr not correctly set" << endl;
         assert(0);
@@ -499,6 +503,7 @@ void BMatchSolver::setOutMgr() {
 void BMatchSolver::run() {
     bool considerAll = false;
     int prevTime = 0;
+    int pre_eval_time = 0;
     cout << "generate output heuristic order" << endl;
     setOutMgr();
     cerr << "start run..." << endl;
@@ -527,6 +532,7 @@ void BMatchSolver::run() {
 
     while (1) {
         int execTime = (clock() - START) / CLOCKS_PER_SEC;
+        cout << execTime << " " << pre_eval_time << endl;
         if (execTime - prevTime >= 10) {
             if (execTime >= 3600) {
                 cout << "time limit reach\n";
@@ -536,6 +542,18 @@ void BMatchSolver::run() {
             cout << "time: " << execTime << " seconds" << endl;
             prevTime = execTime;
         }
+        if (execTime - pre_eval_time >= 100) {
+            outMgr.record();
+            setOutMgr();
+            for (auto assign : outMgr.getAllAssign()) {
+                assign->printMapping();
+            }
+            toStep = true;
+            cur = outMgr.getHead();
+            negation.clear();
+            negation.push_back(vector<bool>());
+        }
+        pre_eval_time = execTime;
         if (bestScore == g.size() + f.size()) {
             cout << "This must be the OPT with (#output_port(Circuit I) + "
                     "#output_port(Circuit II)) = "
@@ -647,6 +665,16 @@ void BMatchSolver::run() {
         if (!canNeg) outputPairs[end]->failNeg();
 
         toStep = negation.size() != 0;
+        
+        size_t score;
+        if (toStep)  {
+            score = outputPairs.size();
+        } else {
+            score = 0;
+        }
+        for (size_t i = 0; i < outputPairs.size(); ++i) {
+            outputPairs[i]->updateScore(score);
+        }
         // cout << "r4" << endl;
 
         // origin output SAT
@@ -663,6 +691,11 @@ void BMatchSolver::run() {
         // }
         // isValidMo(currentResult);
     }
+    // outMgr.record();
+    // setOutMgr();
+    // for (auto assign : outMgr.getAllAssign()) {
+    //     assign->printMapping();
+    // }
 }
 
 void BMatchSolver::outputAns() {
@@ -1218,6 +1251,7 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
     while (1) {
         matrixSolverInstance ++;
         matrixSolverPeriodInstance ++;
+        if ((clock() - previousTime) / CLOCKS_PER_SEC >= 20) return false; //added
         if ((clock() - previousTime) / CLOCKS_PER_SEC >= 1) {
             cerr << "\rMatrix Solver solve: " << setw(4) << matrixSolverPeriodInstance / ((clock() - previousTime) / CLOCKS_PER_SEC) << " /sec, total solve: " << setw(5) << matrixSolverInstance;
             matrixSolverPeriodInstance = 0;
