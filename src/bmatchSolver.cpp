@@ -1782,9 +1782,13 @@ void BMatchSolver::printPossibleM(bool mi, bool mo) {
 }
 
 void BMatchSolver::possibleMethod() {
+    if (x.size() != y.size()) {
+        return;
+    }
     printPossibleM(true, true);
-    bool modify = false;
+    bool modify;
     do {
+        modify = false;
         modify |= checkPossibleMi();
         modify |= checkPossibleMo();
     }
@@ -1809,9 +1813,9 @@ bool BMatchSolver::checkPossibleMi() {
             for (int j = 0; j < f.size(); ++j) {
                 if (SuppX_y.find(j) != SuppX_y.end()) // f[j] \in Supp(X_y) 
                     continue;
-                if (possibleMi[*it][j])
+                if (possibleMo[*it][j])
                     modify = true;
-                possibleMi[*it][j] = false;
+                possibleMo[*it][j] = false;
             }
         }
     }
