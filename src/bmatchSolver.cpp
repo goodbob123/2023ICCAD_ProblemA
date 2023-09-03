@@ -492,7 +492,7 @@ void BMatchSolver::setOutMgr() {
         outMgr.setInputBias(y.size() - x.size());
 
         outMgr.setAssumption(true, true);
-        outMgr.setAtriType(supportSpan::ordNearS, coneSpan::AbsC, remainCnt::real);
+        outMgr.setAtriType(supportSpan::ordNearS, coneSpan::AbsC, remainCnt::addOne);
         outMgr.setStepWay(stepWay::normal);
     } else {
         outMgr.setAssumption(true, true);
