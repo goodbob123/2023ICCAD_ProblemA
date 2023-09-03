@@ -574,7 +574,7 @@ int main(int argc, char* argv[]) {
     bmatchSolver.inputPreprocess();
     bmatchSolver.outputPreprocess();
     // bmatchSolver.printPossibleM(true, true);
-    // bmatchSolver.possibleMethod();
+    bmatchSolver.possibleMethod();
     bmatchSolver.readBusInfo(bus, true);
     bmatchSolver.readBusInfo(bus, false);
     bmatchSolver.printInfo();
