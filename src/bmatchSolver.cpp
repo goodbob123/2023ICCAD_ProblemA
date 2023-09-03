@@ -490,10 +490,15 @@ void BMatchSolver::setOutMgr() {
         assert(y.size() >= x.size());
         cout << y.size() << " " << x.size() << endl;
         outMgr.setInputBias(y.size() - x.size());
+
+        outMgr.setAssumption(true, true);
+        outMgr.setAtriType(supportSpan::ordNearS, coneSpan::AbsC, remainCnt::real);
+        outMgr.setStepWay(stepWay::normal);
+    } else {
+        outMgr.setAssumption(true, true);
+        outMgr.setAtriType(supportSpan::ordNearS, coneSpan::AbsC, remainCnt::addOne);
+        outMgr.setStepWay(stepWay::normal);
     }
-    outMgr.setAssumption(true, true);
-    outMgr.setAtriType(supportSpan::ordNearS, coneSpan::AbsC);
-    outMgr.setStepWay(stepWay::normal);
     cout << "set2" << endl;
     if (!outMgr.init()) {
         cerr << "outMgr not correctly set" << endl;
@@ -542,7 +547,7 @@ void BMatchSolver::run() {
             cout << "time: " << execTime << " seconds" << endl;
             prevTime = execTime;
         }
-        if (execTime - pre_eval_time >= 100) {
+        if ((execTime - pre_eval_time >= 100) && !toStep) {
             outMgr.record();
             setOutMgr();
             for (auto assign : outMgr.getAllAssign()) {
@@ -676,20 +681,6 @@ void BMatchSolver::run() {
             outputPairs[i]->updateScore(score);
         }
         // cout << "r4" << endl;
-
-        // origin output SAT
-        // set<Var> currentResult;
-        // for (int k = 0; k < outputPairs.size(); ++k) {
-        //     // origin : output SAT
-        //     currentResult.insert(outputPairs[k]);
-        //     // cout << "Solving isValidMo..." << endl;
-        //     // bool result = isValidMo(currentResult);
-        //     // if (!result) {
-        //     //     // TODO: block currentResult
-        //     //     currentResult.erase(outputPairs[k]);
-        //     // }
-        // }
-        // isValidMo(currentResult);
     }
     // outMgr.record();
     // setOutMgr();
@@ -1247,11 +1238,12 @@ bool BMatchSolver::isValidMo(const set<Var>& currentResult) {
     }
     matrixSolverInstance = 0;
     matrixSolverPeriodInstance = 0;
+    double startTime = clock();
     previousTime = clock();
     while (1) {
         matrixSolverInstance ++;
         matrixSolverPeriodInstance ++;
-        if ((clock() - previousTime) / CLOCKS_PER_SEC >= 20) return false; //added
+        if ((clock() - startTime) / CLOCKS_PER_SEC >= 100) return false; //added
         if ((clock() - previousTime) / CLOCKS_PER_SEC >= 1) {
             cerr << "\rMatrix Solver solve: " << setw(4) << matrixSolverPeriodInstance / ((clock() - previousTime) / CLOCKS_PER_SEC) << " /sec, total solve: " << setw(5) << matrixSolverInstance;
             matrixSolverPeriodInstance = 0;

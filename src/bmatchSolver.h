@@ -489,6 +489,11 @@ enum coneSpan {
     fSmallC,
     ordNearC
 };
+enum remainCnt {
+    real,
+    addOne,
+    allSame
+};
 class Comparator {  
     // cmp num Support
     // since used in OutPortMgr, Port is stored as second of pair
@@ -507,17 +512,31 @@ class Comparator {
             // score += float(success_result);
 // 
             // return score > 0;
-            if (a->support_atri == b->support_atri) {
-                if (a->cone_atri == b->cone_atri) {
-                    if (a->remain_atri == b->remain_atri) {
-                        if (a->gport_id == b->gport_id) {
-                            if (success_result == 0) {
-                                return span_result;
-                            } else return success_result == 1;
-                        } else return a->gport_id < b->gport_id;
-                    } else return a->remain_atri < b->remain_atri;
-                } else return a->cone_atri < b->cone_atri;
-            } else return a->support_atri < b->support_atri;
+            if (a->remain_atri == 1) {
+                if (a->remain_atri == b->remain_atri) {
+                    if (a->support_atri == b->support_atri) {
+                        if (a->cone_atri == b->cone_atri) {
+                            if (a->gport_id == b->gport_id) {
+                                if (success_result == 0) {
+                                    return span_result;
+                                } else return success_result == 1;
+                            } else return a->gport_id < b->gport_id;
+                        } else return a->cone_atri < b->cone_atri;
+                    } else return a->support_atri < b->support_atri;
+                } else return a->remain_atri < b->remain_atri;
+            } else {
+                if (a->support_atri == b->support_atri) {
+                    if (a->cone_atri == b->cone_atri) {
+                        if (a->remain_atri == b->remain_atri) {
+                            if (a->gport_id == b->gport_id) {
+                                if (success_result == 0) {
+                                    return span_result;
+                                } else return success_result == 1;
+                            } else return a->gport_id < b->gport_id;
+                        } else return a->remain_atri < b->remain_atri;
+                    } else return a->cone_atri < b->cone_atri;
+                } else return a->support_atri < b->support_atri;
+            }
         }
         bool operator() (set<int>& a, set<int>& b) {
             return a.size() < b.size();
@@ -634,9 +653,10 @@ class OutPortMgr
             is_one_to_one = _is_one_to_one;
             is_bus_one_to_one = _is_bus_one_to_one;
         }
-        void setAtriType(supportSpan _supportOrd_type = supportSpan::fBigS, coneSpan _coneOrd_type = coneSpan::AbsC) {
+        void setAtriType(supportSpan _supportOrd_type = supportSpan::ordNearS, coneSpan _coneOrd_type = coneSpan::AbsC, remainCnt _remain_type = remainCnt::real) {
             support_span_type = _supportOrd_type;
             cone_span_type = _coneOrd_type;
+            remain_type = _remain_type;
         }
         void setStepWay(stepWay _way = stepWay::normal) {
             step_way = _way;
@@ -873,6 +893,7 @@ class OutPortMgr
         bool had_set;
         supportSpan support_span_type;
         coneSpan cone_span_type;
+        remainCnt remain_type;
         stepWay step_way;
 
         vector<vector<vector<size_t> > > map_record;
@@ -1218,7 +1239,13 @@ class OutPortMgr
             for (size_t gid = 0; gid < gptr->size(); ++gid) {
                 assert(remain_atri[gid] > 0);
                 for (size_t fid = 0; fid < fptr->size(); ++fid) {
-                    order_map[gid][fid].setRemainAtri(remain_atri[gid]);
+                    if (remain_type == remainCnt::addOne) {
+                        order_map[gid][fid].setRemainAtri(remain_atri[gid] + 1);
+                    } else if (remain_type == remainCnt::allSame) {
+                        order_map[gid][fid].setRemainAtri(2);
+                    } else {
+                        order_map[gid][fid].setRemainAtri(remain_atri[gid]);
+                    }
                 }
             }
         }
